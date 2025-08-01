@@ -1,5 +1,45 @@
 {
   "type": "object",
-  "properties": {},
-  "additionalProperties": true
+  "properties": {
+    "io": {
+      "type": "object",
+      "properties": {
+        "dataset_folder": { "type": "string" },
+        "use_custom_dataset": { "type": "boolean" }
+      },
+      "required": ["dataset_folder", "use_custom_dataset"],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "train": { "type": "boolean" },
+        "test": { "type": "boolean" },
+        "show_preview": { "type": "boolean" },
+        "debug": { "type": "boolean" }
+      },
+      "required": ["train", "test", "show_preview"],
+      "additionalProperties": false
+    },
+    "hyper_parameters": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "train_parameters": {
+      "type": "object",
+      "properties": {
+        "train_split": { "type": "number", "minimum": 0, "maximum": 1 },
+        "val_split": { "type": "number", "minimum": 0, "maximum": 1 },
+        "test_split": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["train_split", "val_split", "test_split"],
+      "additionalProperties": false
+    },
+    "early_stop_parameters": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["io", "parameters", "train_parameters"],
+  "additionalProperties": false
 }
