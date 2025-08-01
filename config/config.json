@@ -1,7 +1,21 @@
 {
-    "io": {},
-    "parameters": {},
-    "hyper_parameters": {},
-    "train_parameters": {},
-    "early_stop_parameters": {}
+  "io": {
+    "dataset_folder": "./data/garbage_classification",
+    "use_custom_dataset": true
+  },
+  "parameters": {
+    "train": true,
+    "test": true,
+    "show_preview": true,
+    "debug": false
+  },
+  "hyper_parameters": {
+    "batch_size": 24
+  },
+  "train_parameters": {
+    "train_split": 0.7,
+    "val_split": 0.15,
+    "test_split": 0.15
+  },
+  "early_stop_parameters": {}
 }
