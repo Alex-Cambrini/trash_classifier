@@ -39,8 +39,8 @@ class DataLoaderManager:
         dataset = datasets.ImageFolder(self.cfg.input.dataset_folder, transform=transform)
         total_size = len(dataset)
 
-        logger.info(f"Dataset totale dimensione: {total_size}")
-        logger.info(f"Classi trovate: {dataset.classes}")
+        logger.debug(f"Dataset totale dimensione: {total_size}")
+        logger.debug(f"Classi trovate: {dataset.classes}")
 
         train_ratio = self.cfg.train_parameters.train_split
         val_ratio = self.cfg.train_parameters.val_split
