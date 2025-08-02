@@ -4,6 +4,14 @@ from pathlib import Path
 from types import SimpleNamespace
 import logger
 
+def _dict_to_namespace(d):
+    if isinstance(d, dict):
+        return SimpleNamespace(**{k: _dict_to_namespace(v) for k, v in d.items()})
+    elif isinstance(d, list):
+        return [_dict_to_namespace(i) for i in d]
+    else:
+        return d
+
 def check_and_get_configuration(config_path: str, schema_path: str) -> object | None:
     config_file = Path(config_path)
     schema_file = Path(schema_path)
@@ -44,14 +52,6 @@ def check_and_get_configuration(config_path: str, schema_path: str) -> object | 
         logger.log(f"Errore nel file schema JSON: {e.message}", "error")
         return None
 
-    def dict_to_namespace(d):
-        if isinstance(d, dict):
-            return SimpleNamespace(**{k: dict_to_namespace(v) for k, v in d.items()})
-        elif isinstance(d, list):
-            return [dict_to_namespace(i) for i in d]
-        else:
-            return d
-
-    config_obj = dict_to_namespace(config_data)
+    config_obj = _dict_to_namespace(config_data)
     logger.log("Configurazione caricata e validata correttamente.", "info")
     return config_obj
