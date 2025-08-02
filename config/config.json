@@ -1,21 +1,35 @@
 {
-  "io": {
+  "input": {
     "dataset_folder": "./data/garbage_classification",
     "use_custom_dataset": true
+  },
+    "output": {
+    "model_save_dir": "./saved_models"
   },
   "parameters": {
     "train": true,
     "test": true,
     "show_preview": true,
-    "debug": false
+    "debug": true
   },
-  "hyper_parameters": {
-    "batch_size": 24
-  },
+    "hyper_parameters": {
+    "batch_size": 16,
+    "weight_decay": 0.0005,
+    "learning_rate": 0.01,
+    "momentum": 0.9,
+    "epochs": 10
+    },
   "train_parameters": {
     "train_split": 0.7,
     "val_split": 0.15,
-    "test_split": 0.15
+    "test_split": 0.15,
+    "accuracy_evaluation_epochs": 1,
+    "accuracy_target": 98
   },
-  "early_stop_parameters": {}
+  "early_stop_parameters": {
+    "start_epoch": 3,
+    "loss_evaluation_epochs": 1,
+    "patience": 5,
+    "improvement_rate": 0.1
+    }
 }
