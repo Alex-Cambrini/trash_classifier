@@ -1,31 +1,28 @@
-from datetime import datetime
-from colorama import Fore, Style
+import logging
+from colorama import Fore, Style, init
 
-_debug = False
+init(autoreset=True)
 
-_levels = {
-    "debug": 0,
-    "info": 1,
-    "warning": 2,
-    "error": 3,
-    "critical": 4
+COLORS = {
+    "DEBUG": Fore.CYAN,
+    "INFO": Fore.WHITE,
+    "WARNING": Fore.YELLOW,
+    "ERROR": Fore.RED,
+    "CRITICAL": Fore.MAGENTA + Style.BRIGHT,
 }
 
-_colors = {
-    "debug": Fore.CYAN,
-    "info": Fore.WHITE,
-    "warning": Fore.YELLOW,
-    "error": Fore.RED,
-    "critical": Fore.MAGENTA + Style.BRIGHT
-}
-
-def set_debug(value: bool):
-    global _debug
-    _debug = value
-
-def log(msg, level="info"):
-    level = level.lower()
-    if _levels.get(level, 1) >= (0 if _debug else 1):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        color = _colors.get(level, Fore.WHITE)
-        print(f"{color}[{timestamp}] [{level.upper()}] {msg}{Style.RESET_ALL}")
+class ColorFormatter(logging.Formatter):
+    def format(self, record):
+        color = COLORS.get(record.levelname, Fore.WHITE)
+        msg = super().format(record)
+        return f"{color}{msg}{Style.RESET_ALL}"
+    
+def get_logger(level=logging.INFO, name=None):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    if not logger.hasHandlers():
+        ch = logging.StreamHandler()
+        formatter = ColorFormatter("[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+    return logger

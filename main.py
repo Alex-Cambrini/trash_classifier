@@ -3,7 +3,8 @@ from data.data_loader import DataLoaderManager
 from pathlib import Path
 from train import Trainer
 import sys
-import logger
+import logging
+from logger import get_logger
 
 def main():
     config_path = Path("config/config.json")
@@ -14,20 +15,22 @@ def main():
         print("Errore: configurazione non valida")
         sys.exit(1)
 
-    logger.set_debug(config.parameters.debug)
-    logger.log("Configurazione caricata correttamente.")
+    log_level = logging.DEBUG if config.parameters.debug else logging.INFO
+    logger = get_logger(level=log_level)
+
+    logger.info("Configurazione caricata correttamente.")
     
     data_manager = DataLoaderManager(config)
     data_manager.load_data()
     num_classes = len(data_manager.classes)
     if data_manager.train_loader is None:
-        logger.log("Errore: caricamento dati fallito. Esco.", level="error")
+        logger.error("Errore: caricamento dati fallito. Esco.")
         sys.exit(1)
-    logger.log("Dati caricati correttamente.", level="info")
+    logger.info("Dati caricati correttamente.")
 
-    logger.log(f"Parametro train: {config.parameters.train}", level="info")
+    logger.info(f"Parametro train: {config.parameters.train}")
     if config.parameters.train:
-        logger.log(f"Numero di epoche: {config.hyper_parameters.epochs}", level="info") 
+        logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
         trainer = Trainer(config, data_manager, num_classes)
         trainer.train()
 
