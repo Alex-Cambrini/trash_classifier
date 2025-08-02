@@ -41,6 +41,10 @@ def check_and_get_configuration(config_path: str, schema_path: str) -> object | 
 
         logger.info("Validazione configurazione con schema...")
         jsonschema.validate(instance=config_data, schema=schema_data)
+        
+        if config_data["early_stop_parameters"]["start_epoch"] > config_data["hyper_parameters"]["epochs"]:
+            logger.error("start_epoch non può essere maggiore di epochs.")
+            return None
 
     except json.JSONDecodeError as e:
         logger.error(f"Errore parsing JSON: {e}")
