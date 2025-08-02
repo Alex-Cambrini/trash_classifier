@@ -1,19 +1,27 @@
 import torch
 import os
+import copy
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from networks.resnet18 import get_resnet18
-import logger
+from pathlib import Path
+from logger import get_logger
 
+logger = get_logger()
 class Trainer:
-    def __init__(self, config, data_manager, num_classes):
+    def __init__(self, config, data_manager, num_classes):        
+
+
         self.config = config
         self.data_manager = data_manager
         self.num_classes = num_classes
 
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Training su {self.device}")
+
         self.model = get_resnet18(num_classes)
-        self.model.to("cpu")
+        self.model.to(self.device)
 
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.SGD(
@@ -36,6 +44,9 @@ class Trainer:
         self.accuracy_eval_every = config.train_parameters.accuracy_evaluation_epochs
         self.accuracy_target = config.train_parameters.accuracy_target
 
+        self.load_model = config.parameters.load_model
+        self.model_load_path = config.parameters.model_load_path
+
         self.best_val_loss = float("inf")
         self.no_improve_count = 0
         self.best_model_state = None
@@ -49,7 +60,7 @@ class Trainer:
         total = 0
         loop = tqdm(self.train_loader, desc="Training epoch")
         for inputs, labels in loop:
-            inputs, labels = inputs.to("cpu"), labels.to("cpu")
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -68,104 +79,116 @@ class Trainer:
         return epoch_loss, epoch_acc
 
     def validate(self, loader):
-        self.model.eval()
-        val_loss = 0.0
-        val_correct = 0
-        val_total = 0
-        with torch.no_grad():
-            for inputs, labels in loader:
-                inputs, labels = inputs.to("cpu"), labels.to("cpu")
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
-                val_loss += loss.item() * inputs.size(0)
-                _, predicted = torch.max(outputs.data, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
-
-        val_loss /= val_total
-        val_acc = val_correct / val_total
-        return val_loss, val_acc
-
-    def save_models(self):
-        output_dir = self.config.output.model_save_dir
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            logger.log(f"Cartella creata: {output_dir}", level="info")
-
-        final_path = os.path.join(output_dir, "model_final.pth")
-        torch.save(self.model.state_dict(), final_path)
-        logger.log(f"Modello finale salvato: {final_path}", level="info")
-
-        if self.best_model_state:
-            best_path = os.path.join(output_dir, "model_best.pth")
-            torch.save(self.best_model_state, best_path)
-            logger.log(f"Modello migliore salvato: {best_path}", level="info")
+        return self._evaluate(loader)
 
     def test_model(self):
-        self.model.eval()
-        test_loss = 0.0
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for inputs, labels in self.test_loader:
-                inputs, labels = inputs.to("cpu"), labels.to("cpu")
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
-                test_loss += loss.item() * inputs.size(0)
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        test_loss /= total
-        test_acc = correct / total
-        logger.log(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.4f}", level="info")
+        test_loss, test_acc = self._evaluate(self.test_loader)
+        logger.info(f"Test Loss: {test_loss:.4f}, Test Accuracy: {test_acc:.4f}")
         return test_loss, test_acc
 
     def train(self):
-        logger.log("Training su CPU", level="info")
+        logger.info(f"Batch Size: {self.config.hyper_parameters.batch_size}")
+        self._load_and_resume_training()
 
         for epoch in range(self.epochs):
-            if self.early_stop:
-                logger.log("Training interrotto per early stopping.", level="info")
-                break
-            if self.target_accuracy_reached:
-                logger.log("Training interrotto per raggiungimento accuracy target.", level="info")
+            if self._should_stop_training():
                 break
 
             epoch_loss, epoch_acc = self.train_one_epoch()
-            logger.log(f"Epoch {epoch+1} - Loss: {epoch_loss:.4f} - Accuracy: {epoch_acc:.4f}", level="info")
-            logger.log(f"Batch Size {self.config.hyper_parameters.batch_size}", level="debug")
+            self._log_epoch(epoch_loss, epoch_acc, epoch)
 
-            # Valutazione su validation loss (early stopping)
             if epoch + 1 >= self.start_epoch and (epoch + 1) % self.loss_eval_every == 0:
-                val_loss, val_acc = self.validate(self.val_loader)
-                logger.log(f"Validation Accuracy: {val_acc:.4f}", level="info")
+                val_loss, _ = self.validate(self.val_loader)
+                self._check_early_stopping(epoch, val_loss)
 
-                if self.best_val_loss - val_loss >= self.improvement_rate:
-                    self.best_val_loss = val_loss
-                    self.best_model_state = self.model.state_dict()
-                    self.no_improve_count = 0
-                    logger.log(f"Validation loss migliorata: {val_loss:.4f}", level="debug")
-                else:
-                    self.no_improve_count += 1
-                    logger.log(f"Nessun miglioramento ({self.no_improve_count}/{self.patience})", level="debug")
-                    if self.no_improve_count >= self.patience:
-                        logger.log("Early stopping attivato", level="info")
-                        self.early_stop = True
-
-            # Valutazione accuracy target
             if (epoch + 1) % self.accuracy_eval_every == 0 or (epoch + 1) == self.epochs:
-                train_acc = self.validate(self.train_loader)[1] * 100
-                val_acc = self.validate(self.val_loader)[1] * 100
-                logger.log(f"Train Accuracy: {train_acc:.2f}% - Val Accuracy: {val_acc:.2f}%", level="info")
-
-                if train_acc > self.accuracy_target and val_acc > self.accuracy_target:
-                    logger.log("Target accuracy raggiunta. Interrompo il training.", level="info")
-                    self.target_accuracy_reached = True
+                self._check_accuracy_target()
 
         if self.best_model_state:
             self.model.load_state_dict(self.best_model_state)
+            self._save_model_state(os.path.join(self.config.output.model_save_dir, "model_best.pth"))
+            logger.info("Il miglior modello è stato salvato come 'model_best.pth'")
+        
+        self._save_model_state(os.path.join(self.config.output.model_save_dir, "model_final.pth"))
 
-        self.save_models()
-        test_loss, test_acc = self.test_model()
-        logger.log(f"Test Loss: {test_loss:.4f} - Test Accuracy: {test_acc:.4f}", level="info")
+        self.test_model()
+
+    def _check_early_stopping(self, epoch, val_loss):
+        logger.debug(f"Validation evaluation at epoch {epoch+1}")
+        if self.best_val_loss - val_loss >= self.improvement_rate:
+            self.best_val_loss = val_loss
+            self.best_model_state = copy.deepcopy(self.model.state_dict())
+            self.no_improve_count = 0
+            logger.debug(f"Validation loss migliorata: {val_loss:.4f}")
+        else:
+            self.no_improve_count += 1
+            logger.debug(f"Nessun miglioramento ({self.no_improve_count}/{self.patience})")
+            if self.no_improve_count >= self.patience:
+                logger.info("Early stopping attivato")
+                self.early_stop = True
+
+    def _check_accuracy_target(self):
+        _, train_acc = self._evaluate(self.train_loader)
+        _, val_acc = self._evaluate(self.val_loader)
+
+        train_acc *= 100
+        val_acc *= 100
+
+        logger.info(f"Train Accuracy: {train_acc:.2f}% - Val Accuracy: {val_acc:.2f}%")
+
+        if train_acc > self.accuracy_target and val_acc > self.accuracy_target:
+            logger.info("Target accuracy raggiunta. Interrompo il training.")
+            self.target_accuracy_reached = True
+
+    def _evaluate(self, loader):
+        self.model.eval()
+        total_loss = 0.0
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for inputs, labels in loader:
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                outputs = self.model(inputs)
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item() * inputs.size(0)
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+        return total_loss / total, correct / total
+    
+    def _save_model_state(self, path: str):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            torch.save(self.model.state_dict(), path)
+            logger.info(f"Model state saved at: {path}")
+        except Exception as e:
+            logger.error(f"Error saving model state: {e}")
+
+    def _load_model_state(self, path: str):
+        path_obj = Path(path)
+        if not path_obj.is_file():
+            logger.error(f"Model state file not found: {path}")
+            return False
+        try:
+            self.model.load_state_dict(torch.load(path))
+            logger.info(f"Model state loaded from: {path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error loading model state: {e}")
+            return False
+        
+    def _load_and_resume_training(self):
+        if self.load_model and self.model_load_path and self._load_model_state(self.model_load_path):
+            logger.info("Modello caricato correttamente, riprendo il training")
+
+    def _should_stop_training(self):
+        if self.early_stop:
+            logger.info("Training interrotto per early stopping.")
+            return True
+        if self.target_accuracy_reached:
+            logger.info("Training interrotto per raggiungimento accuracy target.")
+            return True
+        return False
+    
+    def _log_epoch(self, loss, acc, epoch):
+        logger.info(f"Epoch {epoch+1} - Loss: {loss:.4f} - Accuracy: {acc:.4f}")
