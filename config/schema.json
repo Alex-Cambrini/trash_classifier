@@ -24,9 +24,11 @@
         "train": { "type": "boolean" },
         "test": { "type": "boolean" },
         "show_preview": { "type": "boolean" },
-        "debug": { "type": "boolean" }
+        "debug": { "type": "boolean" },
+        "load_model": { "type": "boolean" },
+        "model_load_path": { "type": "string" }
       },
-      "required": ["train", "test", "show_preview", "debug"],
+      "required": ["train", "test", "show_preview", "debug", "load_model", "model_load_path"],
       "additionalProperties": false
     },
     "hyper_parameters": {

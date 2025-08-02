@@ -10,7 +10,9 @@
     "train": true,
     "test": true,
     "show_preview": true,
-    "debug": true
+    "debug": true,
+    "load_model": false,
+    "model_load_path": "./saved_models/model_last.pth"
   },
     "hyper_parameters": {
     "batch_size": 16,
