@@ -1,13 +1,21 @@
 {
   "type": "object",
   "properties": {
-    "io": {
+    "input": {
       "type": "object",
       "properties": {
         "dataset_folder": { "type": "string" },
         "use_custom_dataset": { "type": "boolean" }
       },
       "required": ["dataset_folder", "use_custom_dataset"],
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "model_save_dir": { "type": "string" }
+      },
+      "required": ["model_save_dir"],
       "additionalProperties": false
     },
     "parameters": {
@@ -18,28 +26,45 @@
         "show_preview": { "type": "boolean" },
         "debug": { "type": "boolean" }
       },
-      "required": ["train", "test", "show_preview"],
+      "required": ["train", "test", "show_preview", "debug"],
       "additionalProperties": false
     },
     "hyper_parameters": {
       "type": "object",
-      "additionalProperties": true
+      "properties": {
+        "batch_size": { "type": "integer" },
+        "weight_decay": { "type": "number" },
+        "learning_rate": { "type": "number" },
+        "momentum": { "type": "number" },
+        "epochs": { "type": "integer" }
+      },
+      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs"],
+      "additionalProperties": false
     },
     "train_parameters": {
       "type": "object",
       "properties": {
         "train_split": { "type": "number", "minimum": 0, "maximum": 1 },
         "val_split": { "type": "number", "minimum": 0, "maximum": 1 },
-        "test_split": { "type": "number", "minimum": 0, "maximum": 1 }
+        "test_split": { "type": "number", "minimum": 0, "maximum": 1 },
+        "accuracy_evaluation_epochs": { "type": "integer", "minimum": 1 },
+        "accuracy_target": { "type": "number", "minimum": 0, "maximum": 100 }
       },
-      "required": ["train_split", "val_split", "test_split"],
+      "required": ["train_split", "val_split", "test_split", "accuracy_evaluation_epochs", "accuracy_target"],
       "additionalProperties": false
     },
     "early_stop_parameters": {
       "type": "object",
-      "additionalProperties": true
+      "properties": {
+        "start_epoch": { "type": "integer", "minimum": 0 },
+        "loss_evaluation_epochs": { "type": "integer", "minimum": 1 },
+        "patience": { "type": "integer", "minimum": 1 },
+        "improvement_rate": { "type": "number", "minimum": 0 }
+      },
+      "required": ["start_epoch", "loss_evaluation_epochs", "patience", "improvement_rate"],
+      "additionalProperties": false
     }
   },
-  "required": ["io", "parameters", "train_parameters"],
-  "additionalProperties": false
+  "required": ["input", "output", "parameters", "hyper_parameters", "train_parameters", "early_stop_parameters"],
+  "additionalProperties": true
 }
