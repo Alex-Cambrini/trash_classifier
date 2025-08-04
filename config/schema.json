@@ -4,16 +4,9 @@
     "input": {
       "type": "object",
       "properties": {
-        "dataset_folder": { "type": "string" },
-        "dataset_folder_augmented": { "type": "string" },
-        "use_augmentation": { "type": "boolean" },
-        "num_augmented_per_image": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-            }
+        "dataset_folder": { "type": "string" }
       },
-      "required": ["dataset_folder", "dataset_folder_augmented", "use_augmentation", "num_augmented_per_image"],
+      "required": ["dataset_folder"],
       "additionalProperties": false
     },
     "output": {

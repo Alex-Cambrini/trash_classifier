@@ -1,11 +1,8 @@
 {
   "input": {
-    "dataset_folder": "./data/garbage_classification",
-    "dataset_folder_augmented": "./data/garbage_augmented",
-    "use_augmentation": true,
-    "num_augmented_per_image": 3
+    "dataset_folder": "./data/garbage_augmented"
   },
-    "output": {
+  "output": {
     "model_save_dir": "./saved_models"
   },
   "parameters": {
