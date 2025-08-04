@@ -6,3 +6,4 @@ logs/
 data/garbage_classification
 data/garbage_augmented
 .vscode/
+runs/
