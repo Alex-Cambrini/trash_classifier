@@ -1,10 +1,11 @@
+import os
+import sys
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 import numpy as np
 from logger import get_logger
-from utils.data_augmentation import create_augmented_dataset
 
 logger = get_logger()
 
@@ -36,21 +37,14 @@ class DataLoaderManager:
         """
         Gestisce l'augmentazione, carica l'intero dataset e lo divide
         in train, validazione e test.
-        """
-        # 1. Decide quale cartella usare (originale o aumentata)
-        if self.cfg.input.use_augmentation:
-            logger.debug("Augmentazione attiva: preparo il dataset aumentato su disco")
-            create_augmented_dataset(
-                self.cfg.input.dataset_folder,
-                self.cfg.input.dataset_folder_augmented,
-                self.cfg.input.num_augmented_per_image
-            )
-            dataset_folder = self.cfg.input.dataset_folder_augmented
-        else:
-            logger.debug("Augmentazione disattivata: uso il dataset originale")
-            dataset_folder = self.cfg.input.dataset_folder
+        """            
+        dataset_folder = self.cfg.input.dataset_folder
 
-        # 2. Carica l'intero dataset e calcola le dimensioni degli split
+        if not os.path.exists(dataset_folder):
+            logger.error(f"La cartella dataset '{dataset_folder}' non esiste.")
+            sys.exit(1)
+
+        # 1. Carica l'intero dataset e calcola le dimensioni degli split
         transform = self.get_transforms()
         dataset = datasets.ImageFolder(dataset_folder, transform=transform)
         self.classes = dataset.classes
@@ -60,7 +54,7 @@ class DataLoaderManager:
         test_size = total_size - train_size - val_size
         logger.debug(f"Split dataset: train={train_size}, val={val_size}, test={test_size}")
 
-        # 3. Splitta il dataset in modo casuale e ritorna le tre parti
+        # 2. Splitta il dataset in modo casuale e ritorna le tre parti
         return random_split(dataset, [train_size, val_size, test_size], generator=self.generator)
 
     def _create_train_sampler(self, train_dataset):
