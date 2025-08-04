@@ -21,7 +21,8 @@
     "weight_decay": 0.0005,
     "learning_rate": 0.01,
     "momentum": 0.9,
-    "epochs": 20
+    "epochs": 20,
+    "seed": 42
     },
   "train_parameters": {
     "network_type": "resnet18",

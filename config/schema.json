@@ -44,9 +44,10 @@
         "weight_decay": { "type": "number" },
         "learning_rate": { "type": "number" },
         "momentum": { "type": "number" },
-        "epochs": { "type": "integer" }
+        "epochs": { "type": "integer" },
+        "seed": { "type": "integer" }
       },
-      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs"],
+      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs", "seed"],
       "additionalProperties": false
     },
     "train_parameters": {
