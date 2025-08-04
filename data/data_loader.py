@@ -1,5 +1,4 @@
-import os
-import sys
+import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader, random_split
@@ -7,6 +6,7 @@ from logger import get_logger
 from utils.data_augmentation import create_augmented_dataset
 
 logger = get_logger()
+
 
 class DataLoaderManager:
     """
@@ -26,6 +26,8 @@ class DataLoaderManager:
         self.val_loader = None
         self.test_loader = None
         self.classes = None
+        self.seed = self.cfg.hyper_parameters.seed
+        self.generator = torch.Generator().manual_seed(self.seed)
 
     def get_transforms(self):
         """
@@ -80,7 +82,7 @@ class DataLoaderManager:
 
         logger.debug(f"Split dataset: train={train_size}, val={val_size}, test={test_size}")
 
-        train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+        train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size], generator=self.generator)
 
         self.classes = dataset.classes
         batch_size = self.cfg.hyper_parameters.batch_size
