@@ -5,9 +5,15 @@
       "type": "object",
       "properties": {
         "dataset_folder": { "type": "string" },
-        "use_custom_dataset": { "type": "boolean" }
+        "dataset_folder_augmented": { "type": "string" },
+        "use_augmentation": { "type": "boolean" },
+        "num_augmented_per_image": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+            }
       },
-      "required": ["dataset_folder", "use_custom_dataset"],
+      "required": ["dataset_folder", "dataset_folder_augmented", "use_augmentation", "num_augmented_per_image"],
       "additionalProperties": false
     },
     "output": {
@@ -46,13 +52,14 @@
     "train_parameters": {
       "type": "object",
       "properties": {
+        "network_type": { "type": "string" },
         "train_split": { "type": "number", "minimum": 0, "maximum": 1 },
         "val_split": { "type": "number", "minimum": 0, "maximum": 1 },
         "test_split": { "type": "number", "minimum": 0, "maximum": 1 },
         "accuracy_evaluation_epochs": { "type": "integer", "minimum": 1 },
         "accuracy_target": { "type": "number", "minimum": 0, "maximum": 100 }
       },
-      "required": ["train_split", "val_split", "test_split", "accuracy_evaluation_epochs", "accuracy_target"],
+      "required": ["network_type", "train_split", "val_split", "test_split", "accuracy_evaluation_epochs", "accuracy_target"],
       "additionalProperties": false
     },
     "early_stop_parameters": {

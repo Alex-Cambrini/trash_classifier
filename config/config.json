@@ -1,7 +1,9 @@
 {
   "input": {
     "dataset_folder": "./data/garbage_classification",
-    "use_custom_dataset": true
+    "dataset_folder_augmented": "./data/garbage_augmented",
+    "use_augmentation": true,
+    "num_augmented_per_image": 3
   },
     "output": {
     "model_save_dir": "./saved_models"
@@ -14,24 +16,25 @@
     "load_model": false,
     "model_load_path": "./saved_models/model_last.pth"
   },
-    "hyper_parameters": {
+  "hyper_parameters": {
     "batch_size": 16,
     "weight_decay": 0.0005,
     "learning_rate": 0.01,
     "momentum": 0.9,
-    "epochs": 10
+    "epochs": 20
     },
   "train_parameters": {
+    "network_type": "resnet18",
     "train_split": 0.7,
     "val_split": 0.15,
     "test_split": 0.15,
-    "accuracy_evaluation_epochs": 1,
+    "accuracy_evaluation_epochs": 4,
     "accuracy_target": 98
   },
   "early_stop_parameters": {
-    "start_epoch": 3,
-    "loss_evaluation_epochs": 1,
-    "patience": 5,
+    "start_epoch": 5,
+    "loss_evaluation_epochs": 2,
+    "patience": 4,
     "improvement_rate": 0.1
     }
 }
