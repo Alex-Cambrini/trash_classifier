@@ -7,16 +7,17 @@ import logging
 from logger import get_logger
 
 def main():
+    logger = get_logger()
     config_path = Path("config/config.json")
     schema_path = Path("config/schema.json")
 
     config = check_and_get_configuration(str(config_path), str(schema_path))
     if config is None:
-        print("Errore: configurazione non valida")
+        logger.error("Configurazione non valida, esco.")
         sys.exit(1)
 
     log_level = logging.DEBUG if config.parameters.debug else logging.INFO
-    logger = get_logger(level=log_level)
+    logger.setLevel(level=log_level)
 
     logger.info("Configurazione caricata correttamente.")
     
@@ -28,11 +29,17 @@ def main():
         sys.exit(1)
     logger.info("Dati caricati correttamente.")
 
-    logger.info(f"Parametro train: {config.parameters.train}")
-    if config.parameters.train:
-        logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
+    if config.parameters.train or config.parameters.test:
         trainer = Trainer(config, data_manager, num_classes)
-        trainer.train()
+
+        logger.debug(f"Parametro train: {config.parameters.train}")
+        if config.parameters.train:
+            logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
+            trainer.train()
+
+        logger.debug(f"Parametro test: {config.parameters.test}")
+        if config.parameters.test:
+            trainer.test_model()
 
 if __name__ == "__main__":
     main()
