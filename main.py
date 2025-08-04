@@ -1,4 +1,4 @@
-from config.config_loader import check_and_get_configuration
+from utils.config_loader import check_and_get_configuration
 from data.data_loader import DataLoaderManager
 from pathlib import Path
 from train import Trainer
