@@ -18,8 +18,6 @@ def main():
 
     log_level = logging.DEBUG if config.parameters.debug else logging.INFO
     logger.setLevel(level=log_level)
-
-    logger.info("Configurazione caricata correttamente.")
     
     data_manager = DataLoaderManager(config)
     data_manager.load_data()
