@@ -10,8 +10,9 @@ from logger import get_logger
 
 logger = get_logger()
 class Trainer:
-    def __init__(self, config, data_manager, num_classes):
+    def __init__(self, config, data_manager, num_classes, writer):
         self.config = config
+        self.writer = writer
 
         #Inizio parametri di configurazione
         #output
@@ -48,6 +49,9 @@ class Trainer:
 
         self.model = get_net(self.network_type, self.num_classes)
         self.model.to(self.device)
+        dummy_input = torch.randn(1, 3, 224, 224).to(self.device)
+        self.writer.add_graph(self.model, dummy_input)
+
         logger.debug(f"Network selected: {self.network_type}")
 
         self.criterion = nn.CrossEntropyLoss()
@@ -69,7 +73,7 @@ class Trainer:
         self.early_stop = False
         self.target_accuracy_reached = False
 
-    def train_one_epoch(self):
+    def train_one_epoch(self, global_step):
         self.model.train()
         running_loss = 0.0
         correct = 0
@@ -84,6 +88,9 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
+            self.writer.add_scalar("Loss/train_step", loss.item(), global_step)
+            global_step += 1
+
             running_loss += loss.item() * inputs.size(0)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
@@ -92,7 +99,7 @@ class Trainer:
 
         epoch_loss = running_loss / total
         epoch_acc = correct / total
-        return epoch_loss, epoch_acc
+        return epoch_loss, epoch_acc, global_step
 
     def validate(self, loader):
         logger.debug("Inizio validazione")
@@ -111,36 +118,37 @@ class Trainer:
         logger.info("Inizio training...")
         logger.info(f"Batch Size: {self.batch_size}")
         self._load_and_resume_training()
+        global_step = 0
 
         for epoch in range(self.current_epoch, self.epochs):
             if self._should_stop_training():
                 break
             
             logger.info(f"Inizio epoca {epoch + 1}/{self.epochs}")
-            epoch_loss, epoch_acc = self.train_one_epoch()
-            self._log_epoch(epoch_loss, epoch_acc, epoch)
+            train_loss, train_acc, global_step = self.train_one_epoch(global_step)
 
-            self.current_epoch = epoch + 1
-
+            val_loss, val_acc = None, None
             if self.current_epoch >= self.start_epoch and (
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
-                val_loss, _ = self.validate(self.val_loader)
+                val_loss, val_acc = self.validate(self.val_loader)
                 prev_best = self.best_val_loss
                 self._check_early_stopping(self.current_epoch, val_loss)
 
-                if self.best_val_loss < prev_best:  # migliora la loss, salva il modello migliore
+                if self.best_val_loss < prev_best:
                     self._save_model_state(os.path.join(self.model_save_dir, "model_best.pth"), self.current_epoch, self.best_model_state)
                     logger.info(f"Miglior modello salvato all'epoca {self.current_epoch}")
+            
+            self.current_epoch = epoch + 1
 
             if self.current_epoch % self.accuracy_eval_every == 0 or self.current_epoch == self.epochs:
                 self._check_accuracy_target()
 
-        # salva modello finale comunque (stato corrente)
+            self._log_epoch(epoch, train_loss, train_acc, val_loss, val_acc)
+
+        # salva modello finale
         self._save_model_state(os.path.join(self.model_save_dir, "model_final.pth"), self.current_epoch)
         logger.info("Fine training")
-
-
 
     def _check_early_stopping(self, epoch, val_loss):
         logger.debug(f"Controllo early stopping alle epoca {epoch}")
@@ -198,7 +206,6 @@ class Trainer:
         except Exception as e:
             logger.error(f"Errore nel salvataggio dello stato del modello: {e}")
 
-
     def _load_model_state(self, path: str):
         path_obj = Path(path)
         if not path_obj.is_file():
@@ -234,5 +241,19 @@ class Trainer:
             return True
         return False
     
-    def _log_epoch(self, loss, acc, epoch):
-        logger.info(f"Epoch {epoch + 1} - Loss: {loss:.4f} - Accuracy: {acc:.4f}")
+    def _log_epoch(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
+        logger.info(f"Epoch {epoch + 1} - Loss: {train_loss:.4f} - Accuracy: {train_acc:.4f}")
+
+        # Logga i valori di training su TensorBoard
+        self.writer.add_scalar("Loss/train", train_loss, epoch)
+        self.writer.add_scalar("Acc/train", train_acc, epoch)
+
+        if val_loss is not None and val_acc is not None:
+            logger.info(f"Val Loss: {val_loss:.4f} - Val Acc: {val_acc:.4f}")
+            # Logga i valori di validazione su TensorBoard
+            self.writer.add_scalar("Loss/val", val_loss, epoch)
+            self.writer.add_scalar("Acc/val", val_acc, epoch)
+
+        # Logga il learning rate
+        current_lr = self.optimizer.param_groups[0]['lr']
+        self.writer.add_scalar("Learning Rate", current_lr, epoch)
