@@ -1,14 +1,25 @@
+import os
+import sys
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader, random_split
 from logger import get_logger
+from utils.data_augmentation import create_augmented_dataset
 
 logger = get_logger()
 
 class DataLoaderManager:
+    """
+    Gestisce il caricamento e la preparazione dei DataLoader per
+    training, validazione e test, inclusa l'eventuale augmentazione dati.
+    """
+
     def __init__(self, cfg):
         """
-        Inizializza il manager con la configurazione.
+        Inizializza il manager con la configurazione specificata.
+
+        Args:
+            cfg: Oggetto di configurazione contenente parametri di input, training e iperparametri.
         """
         self.cfg = cfg
         self.train_loader = None
@@ -18,9 +29,12 @@ class DataLoaderManager:
 
     def get_transforms(self):
         """
-        Trasformazioni base: resize, tensor, normalizzazione.
+        Restituisce la pipeline di trasformazioni da applicare sempre in RAM.
+
+        Returns:
+            transforms.Compose: trasformazioni standard di ridimensionamento, normalizzazione e conversione in tensor.
         """
-        logger.debug("Definisco trasformazioni immagini")
+        logger.debug("Uso trasformazioni standard")
         return transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -30,13 +44,25 @@ class DataLoaderManager:
 
     def load_data(self):
         """
-        Carica immagini da dataset_folder e divide in train/val/test.
-        Crea i DataLoader.
+        Carica il dataset, applica augmentazione se configurata,
+        divide in train, val e test, e crea i DataLoader.
+
+        Genera i DataLoader self.train_loader, self.val_loader e self.test_loader.
+        Imposta anche self.classes con le classi del dataset.
         """
-        logger.debug(f"Caricamento dataset da: {self.cfg.input.dataset_folder}")
+        if self.cfg.input.use_augmentation:
+            logger.debug("Augmentazione attiva: preparo il dataset aumentato su disco")
+            create_augmented_dataset(
+                self.cfg.input.dataset_folder,
+                self.cfg.input.dataset_folder_augmented,
+                self.cfg.input.num_augmented_per_image)
+            dataset_folder = self.cfg.input.dataset_folder_augmented
+        else:
+            logger.debug("Augmentazione disattivata: uso il dataset originale")
+            dataset_folder = self.cfg.input.dataset_folder
 
         transform = self.get_transforms()
-        dataset = datasets.ImageFolder(self.cfg.input.dataset_folder, transform=transform)
+        dataset = datasets.ImageFolder(dataset_folder, transform=transform)
         total_size = len(dataset)
 
         logger.debug(f"Dataset totale dimensione: {total_size}")
@@ -57,9 +83,7 @@ class DataLoaderManager:
         train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
         self.classes = dataset.classes
-
         batch_size = self.cfg.hyper_parameters.batch_size
-        logger.debug(f"Batch size: {batch_size}")
 
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         self.val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
