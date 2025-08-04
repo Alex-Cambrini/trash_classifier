@@ -116,7 +116,7 @@ class Trainer:
 
     def train(self):
         logger.info("Inizio training...")
-        logger.info(f"Batch Size: {self.batch_size}")
+        logger.debug(f"Batch Size: {self.batch_size}")
         self._load_and_resume_training()
         global_step = 0
 

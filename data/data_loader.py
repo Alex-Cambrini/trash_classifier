@@ -75,7 +75,7 @@ class DataLoaderManager:
         samples_weight = class_weights[targets]
         samples_weight = torch.from_numpy(samples_weight).double()
 
-        logger.info("WeightedRandomSampler creato per bilanciare le classi nel training.")
+        logger.debug("WeightedRandomSampler creato per bilanciare le classi nel training.")
         return WeightedRandomSampler(samples_weight, len(samples_weight))
 
     def load_data(self):
@@ -94,4 +94,4 @@ class DataLoaderManager:
         self.val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-        logger.info("DataLoader creati con successo.")
+        logger.debug("DataLoader creati con successo.")
