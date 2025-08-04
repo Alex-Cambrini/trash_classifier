@@ -5,7 +5,6 @@ from train import Trainer
 import sys
 import logging
 from logger import get_logger
-from torch.utils.tensorboard import SummaryWriter # Assicurati di importarlo
 
 
 def main():
@@ -30,8 +29,7 @@ def main():
     logger.info("Dati caricati correttamente.")
 
     if config.parameters.train or config.parameters.test:
-        writer = SummaryWriter() 
-        trainer = Trainer(config, data_manager, num_classes, writer)
+        trainer = Trainer(config, data_manager, num_classes)
 
         logger.debug(f"Parametro train: {config.parameters.train}")
         if config.parameters.train:

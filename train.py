@@ -7,13 +7,13 @@ from tqdm import tqdm
 from networks import get_net
 from pathlib import Path
 from logger import get_logger
+from torch.utils.tensorboard import SummaryWriter
 
 logger = get_logger()
 class Trainer:
-    def __init__(self, config, data_manager, num_classes, writer):
+    def __init__(self, config, data_manager, num_classes):
         self.config = config
-        self.writer = writer
-
+        self.writer = SummaryWriter()
         #Inizio parametri di configurazione
         #output
         self.model_save_dir = config.output.model_save_dir
