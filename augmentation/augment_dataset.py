@@ -87,6 +87,4 @@ def create_augmented_dataset(config):
     if copy_original:
         logger.debug(f"Copiate {len(images)} immagini originali.")
     logger.debug(f"Generate {total_aug} immagini augmentate.")
-    logger.info(
-        f"Augmentazione completata: {len(images) + (total_aug if copy_original else 0)} immagini totali."
-    )
+    logger.info(f"Augmentazione completata: {total_aug + (len(images) if copy_original else 0)} immagini totali.")
