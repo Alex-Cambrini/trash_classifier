@@ -9,7 +9,8 @@
       "type": "array",
       "items": { "type": "string", "pattern": "^\\.[a-zA-Z0-9]+$" }
     },
-    "debug": { "type": "boolean" }
+    "debug": { "type": "boolean" },
+    "overwrite": { "type": "boolean" }
   },
   "required": ["input_dir", "output_dir", "num_augmented_per_image", "copy_original", "valid_extensions", "debug"],
   "additionalProperties": false

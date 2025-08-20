@@ -4,5 +4,6 @@
   "num_augmented_per_image": 3,
   "copy_original": true,
   "valid_extensions": [".jpg", ".jpeg", ".png"],
-  "debug": true
+  "debug": true,
+  "overwrite": true
 }
