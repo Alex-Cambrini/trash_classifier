@@ -101,12 +101,6 @@ class Trainer:
         epoch_acc = correct / total
         return epoch_loss, epoch_acc, global_step
 
-    def validate(self, loader):
-        logger.debug("Inizio validazione")
-        result = self._evaluate(loader)
-        logger.debug("Fine validazione")
-        return result
-
     def test_model(self):
         logger.info("Inizio testing")
         test_loss, test_acc = self._evaluate(self.test_loader)
@@ -124,14 +118,15 @@ class Trainer:
             if self._should_stop_training():
                 break
             
-            logger.info(f"Inizio epoca {epoch + 1}/{self.epochs}")
+            self.current_epoch = epoch + 1
+            logger.info(f"Inizio epoca {self.current_epoch}/{self.epochs}")
             train_loss, train_acc, global_step = self.train_one_epoch(global_step)
 
             val_loss, val_acc = None, None
             if self.current_epoch >= self.start_epoch and (
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
-                val_loss, val_acc = self.validate(self.val_loader)
+                val_loss, val_acc = self._validate(self.val_loader)
                 prev_best = self.best_val_loss
                 self._check_early_stopping(self.current_epoch, val_loss)
 
@@ -139,12 +134,12 @@ class Trainer:
                     self._save_model_state(os.path.join(self.model_save_dir, "model_best.pth"), self.current_epoch, self.best_model_state)
                     logger.info(f"Miglior modello salvato all'epoca {self.current_epoch}")
             
-            self.current_epoch = epoch + 1
+
 
             if self.current_epoch % self.accuracy_eval_every == 0 or self.current_epoch == self.epochs:
                 self._check_accuracy_target()
 
-            self._log_epoch(epoch, train_loss, train_acc, val_loss, val_acc)
+            self._log_epoch(self.current_epoch, train_loss, train_acc, val_loss, val_acc)
 
         # salva modello finale
         self._save_model_state(os.path.join(self.model_save_dir, "model_final.pth"), self.current_epoch)
@@ -164,7 +159,15 @@ class Trainer:
                 logger.info("Early stopping attivato")
                 self.early_stop = True
 
+    def _validate(self, loader):
+        logger.debug("Inizio validazione early_stopping")
+        val_loss, val_acc = self._evaluate(loader)
+        logger.info(f"Val Loss: {val_loss:.4f} - Val Accuracy: {val_acc*100:.2f}%")
+        logger.debug("Fine validazione early_stopping")
+        return val_loss, val_acc
+
     def _check_accuracy_target(self):
+        logger.debug("Inizio valutazione per accuracy target")
         _, train_acc = self._evaluate(self.train_loader)
         _, val_acc = self._evaluate(self.val_loader)
 
@@ -176,6 +179,8 @@ class Trainer:
         if train_acc > self.accuracy_target and val_acc > self.accuracy_target:
             logger.info("Target accuracy raggiunta. Interrompo il training.")
             self.target_accuracy_reached = True
+            
+        logger.debug("Fine valutazione per accuracy target")
 
     def _evaluate(self, loader):
         self.model.eval()
