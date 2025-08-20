@@ -17,6 +17,14 @@
       "required": ["model_save_dir"],
       "additionalProperties": false
     },
+    "dataset_parameters": {
+    "type": "object",
+    "properties": {
+        "min_samples_per_class": { "type": "integer", "minimum": 1 }
+    },
+    "required": ["min_samples_per_class"],
+    "additionalProperties": false
+    },
     "parameters": {
       "type": "object",
       "properties": {
@@ -68,6 +76,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["input", "output", "parameters", "hyper_parameters", "train_parameters", "early_stop_parameters"],
+  "required": ["input", "output", "dataset_parameters", "parameters", "hyper_parameters", "train_parameters", "early_stop_parameters"],
   "additionalProperties": true
 }

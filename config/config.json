@@ -5,6 +5,9 @@
   "output": {
     "model_save_dir": "./saved_models"
   },
+  "dataset_parameters": {
+    "min_samples_per_class": 200
+  },
   "parameters": {
     "train": true,
     "test": true,
