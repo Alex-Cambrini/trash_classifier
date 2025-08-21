@@ -18,12 +18,12 @@
       "additionalProperties": false
     },
     "dataset_parameters": {
-    "type": "object",
-    "properties": {
+      "type": "object",
+      "properties": {
         "min_samples_per_class": { "type": "integer", "minimum": 1 }
-    },
-    "required": ["min_samples_per_class"],
-    "additionalProperties": false
+      },
+      "required": ["min_samples_per_class"],
+      "additionalProperties": false
     },
     "parameters": {
       "type": "object",
@@ -46,9 +46,11 @@
         "learning_rate": { "type": "number" },
         "momentum": { "type": "number" },
         "epochs": { "type": "integer" },
-        "seed": { "type": "integer" }
+        "seed": { "type": "integer" },
+        "learning_rate_scheduler_step": { "type": "integer", "minimum": 1 },
+        "learning_rate_scheduler_gamma": { "type": "number", "minimum": 0, "maximum": 1 }
       },
-      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs", "seed"],
+      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs", "seed", "learning_rate_scheduler_step", "learning_rate_scheduler_gamma"],
       "additionalProperties": false
     },
     "train_parameters": {

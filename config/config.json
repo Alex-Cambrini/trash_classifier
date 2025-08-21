@@ -17,11 +17,13 @@
     "model_load_path": "./saved_models/model_last.pth"
   },
   "hyper_parameters": {
-    "batch_size": 16,
+    "batch_size": 32,
     "weight_decay": 0.0005,
     "learning_rate": 0.01,
+    "learning_rate_scheduler_step": 1,
+    "learning_rate_scheduler_gamma": 0.1,     
     "momentum": 0.9,
-    "epochs": 20,
+    "epochs": 10,
     "seed": 42
     },
   "train_parameters": {
@@ -33,7 +35,7 @@
     "accuracy_target": 98
   },
   "early_stop_parameters": {
-    "start_epoch": 5,
+    "start_epoch": 3,
     "loss_evaluation_epochs": 2,
     "patience": 4,
     "improvement_rate": 0.1
