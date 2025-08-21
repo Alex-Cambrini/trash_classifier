@@ -23,8 +23,8 @@ def main():
 
     # Controllo DATASET PRIMA DI CREARE I LOADER
     analyzer = DatasetAnalyzer(config.input.dataset_folder)
-    class_counts = analyzer.analyze_and_report(config.dataset_parameters.min_samples_per_class)
-    logger.info(f"Analisi dataset completata: {class_counts}")
+    analyzer.analyze_and_report(config.dataset_parameters.min_samples_per_class)
+    logger.info("Analisi dataset completata.")
 
     
     data_manager = DataLoaderManager(config)
