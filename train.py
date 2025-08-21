@@ -1,3 +1,4 @@
+import time
 import torch
 import os
 import copy
@@ -8,6 +9,8 @@ from networks import get_net
 from pathlib import Path
 from logger import get_logger
 from torch.utils.tensorboard import SummaryWriter
+from metrics import compute_confusion_matrix_metric, compute_loss, compute_accuracy, compute_per_class_accuracy, compute_precision_recall_f1
+
 
 logger = get_logger()
 class Trainer:
@@ -27,6 +30,8 @@ class Trainer:
         self.batch_size = config.hyper_parameters.batch_size
         self.weight_decay = config.hyper_parameters.weight_decay
         self.learning_rate = config.hyper_parameters.learning_rate
+        self.lr_step = config.hyper_parameters.learning_rate_scheduler_step
+        self.lr_gamma = config.hyper_parameters.learning_rate_scheduler_gamma        
         self.momentum = config.hyper_parameters.momentum
 
         #train parameters
@@ -65,6 +70,13 @@ class Trainer:
             lr=self.learning_rate,
             momentum=self.momentum,
             weight_decay=self.weight_decay
+        )
+
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer,
+            mode='min',        # minimizza la loss
+            factor=self.lr_gamma,  # fattore di riduzione
+            patience=self.lr_step, # epoche da attendere prima di ridurre
         )
 
         self.best_val_loss = float("inf")
@@ -127,6 +139,8 @@ class Trainer:
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
                 val_loss, val_acc = self._validate(self.val_loader)
+                self.scheduler.step(val_loss)  # Aggiorna LR in base alla val loss
+                logger.info(f"Learning rate adjusted to: {self.optimizer.param_groups[0]['lr']:.6f}")
                 prev_best = self.best_val_loss
                 self._check_early_stopping(self.current_epoch, val_loss)
 
@@ -161,18 +175,20 @@ class Trainer:
 
     def _validate(self, loader):
         logger.debug("Inizio validazione early_stopping")
-        val_loss, val_acc = self._evaluate(loader)
-        logger.info(f"Val Loss: {val_loss:.4f} - Val Accuracy: {val_acc*100:.2f}%")
+        metrics = self._evaluate(loader)
+        val_loss = metrics['loss']
+        val_acc = metrics['accuracy']
         logger.debug("Fine validazione early_stopping")
         return val_loss, val_acc
 
     def _check_accuracy_target(self):
         logger.debug("Inizio valutazione per accuracy target")
-        _, train_acc = self._evaluate(self.train_loader)
-        _, val_acc = self._evaluate(self.val_loader)
+        
+        train_metrics = self._evaluate(self.train_loader)
+        val_metrics = self._evaluate(self.val_loader)
 
-        train_acc *= 100
-        val_acc *= 100
+        train_acc = train_metrics['accuracy'] * 100
+        val_acc = val_metrics['accuracy'] * 100
 
         logger.info(f"Train Accuracy: {train_acc:.2f}% - Val Accuracy: {val_acc:.2f}%")
 
@@ -182,34 +198,35 @@ class Trainer:
             
         logger.debug("Fine valutazione per accuracy target")
 
+
     def _evaluate(self, loader):
-        self.model.eval()
-        total_loss = 0.0
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for inputs, labels in loader:
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
-                total_loss += loss.item() * inputs.size(0)
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-        return total_loss / total, correct / total
+        loss = compute_loss(self.model, loader, self.criterion, self.device)
+        acc = compute_accuracy(self.model, loader, self.device)
+        per_class_acc = compute_per_class_accuracy(self.model, loader, self.device, self.num_classes)
+        precision, recall, f1 = compute_precision_recall_f1(self.model, loader, self.device, self.num_classes)
+        cm = compute_confusion_matrix_metric(self.model, loader, self.device, self.num_classes)
+        return {
+            "loss": loss,
+            "accuracy": acc,
+            "per_class_accuracy": per_class_acc,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "confusion_matrix": cm
+        }
         
     def _save_model_state(self, path: str, epoch: int, model_state=None):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        try:
-            state_to_save = model_state if model_state is not None else self.model.state_dict()
-            torch.save({
-                'model_state_dict': state_to_save,
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'epoch': epoch + 1,
-            }, path)
-            logger.info(f"Stato del modello e dell'ottimizzatore salvato in: {path}")
-        except Exception as e:
-            logger.error(f"Errore nel salvataggio dello stato del modello: {e}")
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        base, ext = os.path.splitext(path)
+        path = f"{base}_epoch{epoch}_{timestamp}{ext}"
+        state_to_save = model_state if model_state is not None else self.model.state_dict()
+        torch.save({
+            'model_state_dict': state_to_save,
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'epoch': epoch + 1,
+        }, path)
+        logger.info(f"Stato del modello e dell'ottimizzatore salvato in: {path}")
 
     def _load_model_state(self, path: str):
         path_obj = Path(path)
@@ -220,14 +237,18 @@ class Trainer:
             checkpoint = torch.load(path)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            self.current_epoch = checkpoint.get('epoch')
-            if self.current_epoch is None:
-                logger.error("Checkpoint non contiene 'epoch'. Potrebbe causare problemi nel resume del training.")
+            
+            self.current_epoch = checkpoint.get('epoch', 0)
+            if not isinstance(self.current_epoch, int):
+                logger.warning("Epoch nel checkpoint non è un intero valido, parto da 0")
+                self.current_epoch = 0
+
             logger.info(f"Model and optimizer state loaded from: {path}")
             return True
         except Exception as e:
             logger.error(f"Error loading model state: {e}")
             return False
+
   
     def _load_and_resume_training(self):
         self.current_epoch = 0  # default se non carichi modello
@@ -247,7 +268,7 @@ class Trainer:
         return False
     
     def _log_epoch(self, epoch, train_loss, train_acc, val_loss=None, val_acc=None):
-        logger.info(f"Epoch {epoch + 1} - Loss: {train_loss:.4f} - Accuracy: {train_acc:.4f}")
+        logger.info(f"Epoch {epoch} - Loss: {train_loss:.4f} - Accuracy: {train_acc:.4f}")
 
         # Logga i valori di training su TensorBoard
         self.writer.add_scalar("Loss/train", train_loss, epoch)
