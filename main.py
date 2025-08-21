@@ -5,6 +5,7 @@ from train import Trainer
 import sys
 import logging
 from logger import get_logger
+from utils.dataset_analysis import DatasetAnalyzer
 
 
 def main():
@@ -19,6 +20,12 @@ def main():
 
     log_level = logging.DEBUG if config.parameters.debug else logging.INFO
     logger.setLevel(level=log_level)
+
+    # Controllo DATASET PRIMA DI CREARE I LOADER
+    analyzer = DatasetAnalyzer(config.input.dataset_folder)
+    class_counts = analyzer.analyze_and_report(config.dataset_parameters.min_samples_per_class)
+    logger.info(f"Analisi dataset completata: {class_counts}")
+
     
     data_manager = DataLoaderManager(config)
     data_manager.load_data()
