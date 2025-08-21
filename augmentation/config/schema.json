@@ -3,7 +3,8 @@
   "properties": {
     "input_dir": { "type": "string" },
     "output_dir": { "type": "string" },
-    "num_augmented_per_image": { "type": "integer", "minimum": 1 },
+    "min_augmented_per_image": { "type": "integer", "minimum": 1 },
+    "max_augmented_per_image": { "type": "integer", "minimum": 1 },
     "copy_original": { "type": "boolean" },
     "valid_extensions": {
       "type": "array",
@@ -12,6 +13,6 @@
     "debug": { "type": "boolean" },
     "overwrite": { "type": "boolean" }
   },
-  "required": ["input_dir", "output_dir", "num_augmented_per_image", "copy_original", "valid_extensions", "debug"],
+  "required": ["input_dir", "output_dir", "min_augmented_per_image", "max_augmented_per_image", "copy_original", "valid_extensions", "debug"],
   "additionalProperties": false
 }
