@@ -25,4 +25,8 @@ def get_logger(level=logging.INFO, name=None):
         formatter = ColorFormatter("[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
         ch.setFormatter(formatter)
         logger.addHandler(ch)
+
+    # Riduci il logging di librerie rumorose
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    logging.getLogger("PIL").setLevel(logging.WARNING)
     return logger
