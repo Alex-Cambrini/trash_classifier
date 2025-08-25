@@ -5,5 +5,6 @@ __pycache__/
 logs/
 data/garbage_classification
 data/garbage_augmented
+data/analisys
 .vscode/
 runs/
