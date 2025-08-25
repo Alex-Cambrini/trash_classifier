@@ -1,10 +1,12 @@
 {
   "input_dir": "./data/garbage_classification",
   "output_dir": "./data/garbage_augmented",
+  "analisys_dir": "./data/analisys",
   "min_augmented_per_image": 3,
   "max_augmented_per_image": 6,
   "copy_original": true,
   "valid_extensions": [".jpg", ".jpeg", ".png"],
   "debug": true,
-  "overwrite": true
+  "overwrite": true,
+  "show_chart": true
 }
