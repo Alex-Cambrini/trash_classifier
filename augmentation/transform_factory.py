@@ -3,11 +3,14 @@ from torchvision import transforms
 def get_transforms():
     """
     Restituisce la pipeline di trasformazioni per l'augmentation.
-    Puoi personalizzare qui le trasformazioni secondo necessità.
     """
     return transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((256, 256)),
+        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
         transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(15),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        transforms.RandomVerticalFlip(p=0.2),
+        transforms.RandomRotation(20),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+        transforms.RandomGrayscale(p=0.1),
+        transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0))
     ])
