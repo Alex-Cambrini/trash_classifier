@@ -169,9 +169,10 @@ class Trainer:
         if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):             
             with torch.no_grad():
                 self.logger.info("Inizio valutazione sul train set...")
-                train_metrics_full = self._evaluate(self.train_loader)
+                metrics = self._evaluate(self.train_loader)
+                train_metrics_full.update(metrics)
                 train_metrics_full['loss'] = epoch_loss
-                train_metrics_full['all_labels'] = all_labels 
+                train_metrics_full['all_labels'] = all_labels
                 self.logger.info("Fine valutazione sul train set")
 
         return train_metrics_full, global_step
@@ -242,11 +243,17 @@ class Trainer:
             f"best_val_loss={self.best_val_loss:.4f}, current_val_loss={val_loss:.4f}, "
             f"no_improve_count={self.no_improve_count}"
         )
+
+        # Aggiorna best model solo se miglioramento significativo
         if self.best_val_loss - val_loss >= self.improvement_rate:
             self.best_val_loss = val_loss
-            self.best_model_state = copy.deepcopy(self.model.state_dict())
             self.no_improve_count = 0
             self.logger.info(f"Loss migliorata: {val_loss:.4f}")
+
+            # Aggiorna best_model_state in memoria solo se serve davvero
+            if self.best_model_state is None or (val_loss < self.best_val_loss):
+                self.best_model_state = copy.deepcopy(self.model.state_dict())
+
         else:
             self.no_improve_count += 1
             self.logger.warning(f"Nessun miglioramento ({self.no_improve_count}/{self.patience})")
