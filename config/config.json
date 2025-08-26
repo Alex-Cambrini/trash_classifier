@@ -10,34 +10,34 @@
   },
   "parameters": {
     "train": true,
-    "test": true,
+    "final_test": true,
     "show_preview": true,
     "debug": true,
-    "load_model": false,
-    "model_load_path": "./saved_models/model_last.pth"
+    "load_model": true,
+    "model_load_path": "./saved_models/reload.pth"
   },
   "hyper_parameters": {
-    "batch_size": 32,
-    "weight_decay": 0.0005,
-    "learning_rate": 0.01,
-    "learning_rate_scheduler_step": 1,
-    "learning_rate_scheduler_gamma": 0.1,     
+    "batch_size": 64,
+    "weight_decay": 0.005,
+    "learning_rate": 0.0005,
+    "learning_rate_scheduler_step": 3,
+    "learning_rate_scheduler_gamma": 0.5,     
     "momentum": 0.9,
-    "epochs": 10,
+    "epochs": 15,
     "seed": 42
     },
   "train_parameters": {
-    "network_type": "resnet18",
+    "network_type": "efficientnet_b0",
     "train_split": 0.7,
     "val_split": 0.15,
     "test_split": 0.15,
-    "accuracy_evaluation_epochs": 4,
+    "accuracy_evaluation_epochs": 2,
     "accuracy_target": 98
   },
   "early_stop_parameters": {
-    "start_epoch": 3,
+    "start_epoch": 1,
     "loss_evaluation_epochs": 2,
-    "patience": 4,
+    "patience": 3,
     "improvement_rate": 0.1
     }
 }
