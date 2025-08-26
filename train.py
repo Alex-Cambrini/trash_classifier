@@ -161,6 +161,8 @@ class Trainer:
 
         epoch_loss = running_loss / total
         all_labels = torch.cat(all_labels)
+        class_distribution = torch.bincount(all_labels)
+        self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {class_distribution}")
 
         # --- Calcolo metriche solo se serve ---
         train_metrics_full = {"loss": epoch_loss, "all_labels": all_labels}
