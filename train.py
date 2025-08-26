@@ -142,12 +142,14 @@ class Trainer:
         self.model.train()
         running_loss = 0.0
         total = 0
-        all_labels = []
+        class_counts = torch.zeros(self.num_classes, device='cpu')
 
         loop = tqdm(self.train_loader, desc="Training epoch")
+        all_labels_list = []
+
         for inputs, labels in loop:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
-            all_labels.append(labels)
+            all_labels_list.append(labels.cpu())
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -160,35 +162,39 @@ class Trainer:
 
             running_loss += loss.item() * inputs.size(0)
             total += labels.size(0)
+
+            # Aggiornamento distribuzione classi incrementale
+            class_counts += torch.bincount(labels.cpu(), minlength=self.num_classes)
             loop.set_postfix(loss=loss.item())
 
         epoch_loss = running_loss / total
-        all_labels = torch.cat(all_labels)
-        class_distribution = torch.bincount(all_labels)
-        self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {class_distribution}")
+        all_labels = torch.cat(all_labels_list)
 
-        # --- Calcolo metriche solo se serve ---
+        self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {class_counts}")
+
+        # --- Calcolo metriche solo se necessario ---
         train_metrics_full = {"loss": epoch_loss, "all_labels": all_labels}
-        if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):             
+
+        if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):
             with torch.no_grad():
-                self.logger.info("Inizio valutazione sul train set...")
+                self.logger.info("Inizio valutazione completa sul train set...")
                 metrics = self._evaluate(self.train_loader)
                 train_metrics_full.update(metrics)
-                train_metrics_full['loss'] = epoch_loss
+                train_metrics_full['loss'] = epoch_loss  # mantiene l'epoch loss reale
                 train_metrics_full['all_labels'] = all_labels
                 self.logger.info("Fine valutazione sul train set")
 
         return train_metrics_full, global_step
+
 
     # --- Funzione centrale di training ---
     def train(self):
         self.logger.info("Inizio training...")
         self.logger.debug(f"Training su {self.device}")
 
-        # verifico se devo caricare un modello
         self._load_and_resume_training()
+        self.logger.debug(f"Network selected: {self.network_type}")
 
-        self.temp_logger.debug(f"Network selected: {self.network_type}")
         self.logger_utils = LoggerUtils(self.logger, self.writer, self.optimizer)
 
         global_step = 0
@@ -204,6 +210,7 @@ class Trainer:
             train_metrics, global_step = self.train_one_epoch(global_step)
 
             val_metrics = None
+            # Eseguo validazione solo quando serve
             if self.current_epoch >= self.start_epoch and (
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
@@ -212,14 +219,15 @@ class Trainer:
                 self._check_early_stopping(val_metrics)
                 self.logger.debug(
                     f"Scheduler step called | current val_loss={val_metrics['loss']:.4f} | "
-                    f"scheduler patience={self.scheduler.patience}")
+                    f"scheduler patience={self.scheduler.patience}"
+                )
                 if self.best_val_loss == val_metrics['loss']:
                     self._save_model_state("model_best.pth", self.current_epoch, self.best_model_state)
             else:
                 self.logger.debug(f"Epoca {self.current_epoch}: skip validazione (start_epoch={self.start_epoch}, loss_eval_every={self.loss_eval_every})")
 
-            # Controllo target accuracy usando metriche già calcolate
-            if self.current_epoch % self.accuracy_eval_every == 0 or self.current_epoch == self.epochs:
+            # Controllo target accuracy usando metriche già calcolate da train_one_epoch
+            if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):
                 self._check_accuracy_target(train_metrics, val_metrics)
 
             # Log centralizzato
