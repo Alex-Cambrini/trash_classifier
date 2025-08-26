@@ -1,51 +1,61 @@
-from utils.config_loader import check_and_get_configuration
-from data.data_loader import DataLoaderManager
+import time
+import numexpr
 from pathlib import Path
-from train import Trainer
 import sys
 import logging
+
+from utils.config_loader import ConfigLoader
+from data.data_loader import DataLoaderManager
+from train import Trainer
 from logger import get_logger
 from utils.dataset_analysis import DatasetAnalyzer
-
+from run_info import get_run_name
 
 def main():
-    logger = get_logger()
+    numexpr.set_num_threads(16)
+
+    # --- Logger temporaneo per il caricamento config ---
+    temp_logger = get_logger(run_name="temp_log", level=logging.DEBUG, memory_only=True)
+    temp_logger.info("Avvio script e caricamento configurazione...")
+
+    # --- Caricamento e validazione config ---
     config_path = Path("config/config.json")
     schema_path = Path("config/schema.json")
 
-    config = check_and_get_configuration(str(config_path), str(schema_path))
+    loader = ConfigLoader(config_path, schema_path, temp_logger)
+    config = loader.load()
+   
     if config is None:
-        logger.error("Configurazione non valida, esco.")
+        temp_logger.error("Configurazione non valida, esco.")
         sys.exit(1)
 
-    log_level = logging.DEBUG if config.parameters.debug else logging.INFO
-    logger.setLevel(level=log_level)
-
-    # Controllo DATASET PRIMA DI CREARE I LOADER
-    analyzer = DatasetAnalyzer(config.input.dataset_folder)
-    analyzer.analyze_and_report(config.dataset_parameters.min_samples_per_class)
-    logger.info("Analisi dataset completata.")
-
-    
-    data_manager = DataLoaderManager(config)
+    # --- Caricamento dati ---
+    data_manager = DataLoaderManager(config, temp_logger)
     data_manager.load_data()
     num_classes = len(data_manager.classes)
     if data_manager.train_loader is None:
-        logger.error("Errore: caricamento dati fallito. Esco.")
+        temp_logger.error("Errore: caricamento dati fallito. Esco.")
         sys.exit(1)
-    logger.info("Dati caricati correttamente.")
+    temp_logger.info("Dati caricati correttamente.")
 
-    if config.parameters.train or config.parameters.test:
-        trainer = Trainer(config, data_manager, num_classes)
+    # --- Analisi dataset ---
+    analyzer = DatasetAnalyzer(config.input.dataset_folder, temp_logger)
+    analyzer.analyze_and_report(config.dataset_parameters.min_samples_per_class)
+    temp_logger.info("Analisi dataset completata.")
 
-        logger.debug(f"Parametro train: {config.parameters.train}")
-        if config.parameters.train:
-            logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
-            trainer.train()
+    # --- Addestramento o Test ---
+    trainer = Trainer(config, data_manager, num_classes, temp_logger)
+    logger = get_logger(run_name=get_run_name())
 
-        logger.debug(f"Parametro test: {config.parameters.test}")
-        if config.parameters.test:
-            trainer.test_model()
+    if config.parameters.train and config.parameters.final_test:
+        logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
+        trainer.train()
+        trainer.test_model(use_current_model=True)
+    elif config.parameters.train:
+        trainer.train()
+    elif config.parameters.test:
+        trainer.test_model()
+
 
 if __name__ == "__main__":
     main()
