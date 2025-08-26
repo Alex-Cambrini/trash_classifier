@@ -16,7 +16,9 @@ class LoggerUtils:
     # --- Log principale per terminale ---
     def log_terminal(self, epoch, train_metrics, val_metrics=None):
         # INFO: metriche aggregate
-        msg = f"Epoch {epoch} | Train Loss: {train_metrics['loss']:.4f}, Acc: {train_metrics.get('accuracy', 0):.4f}"
+        train_acc = train_metrics.get('accuracy', None)
+        train_acc_str = f"{train_acc:.4f}" if train_acc is not None else "N/D"
+        msg = f"Epoch {epoch} | Train Loss: {train_metrics['loss']:.4f}, Acc: {train_acc_str}"
         if val_metrics is not None:
             msg += f" | Val Loss: {val_metrics['loss']:.4f}, Acc: {val_metrics.get('accuracy', 0):.4f}"
         self.logger.info(msg)
