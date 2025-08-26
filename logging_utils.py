@@ -1,15 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch
 from torch.utils.tensorboard import SummaryWriter
 from logger import get_logger
 
-logger = get_logger()
 
 class LoggerUtils:
-    def __init__(self, writer: SummaryWriter, optimizer=None):
+    def __init__(self, logger, writer: SummaryWriter, optimizer=None):
+        self.logger = logger
         self.writer = writer
         self.optimizer = optimizer
+
 
     # --- Log principale per terminale ---
     def log_terminal(self, epoch, train_metrics, val_metrics=None):
@@ -17,26 +19,31 @@ class LoggerUtils:
         msg = f"Epoch {epoch} | Train Loss: {train_metrics['loss']:.4f}, Acc: {train_metrics.get('accuracy', 0):.4f}"
         if val_metrics is not None:
             msg += f" | Val Loss: {val_metrics['loss']:.4f}, Acc: {val_metrics.get('accuracy', 0):.4f}"
-        logger.info(msg)
+        self.logger.info(msg)
 
         # INFO: medie delle metriche per classe
         for metric_name in ['per_class_accuracy', 'precision', 'recall', 'f1']:
             if metric_name in train_metrics:
                 mean_val = np.mean(train_metrics[metric_name])
-                logger.info(f"Train {metric_name} (mean): {mean_val:.4f}")
+                self.logger.info(f"Train {metric_name} (mean): {mean_val:.4f}")
                 # DEBUG: valori per classe
-                logger.debug(f"Train {metric_name} (per class): {train_metrics[metric_name]}")
+                self.logger.debug(f"Train {metric_name} (per class): {train_metrics[metric_name]}")
             if val_metrics is not None and metric_name in val_metrics:
                 mean_val = np.mean(val_metrics[metric_name])
-                logger.info(f"Val {metric_name} (mean): {mean_val:.4f}")
+                self.logger.info(f"Val {metric_name} (mean): {mean_val:.4f}")
                 # DEBUG: valori per classe
-                logger.debug(f"Val {metric_name} (per class): {val_metrics[metric_name]}")
+                self.logger.debug(f"Val {metric_name} (per class): {val_metrics[metric_name]}")
 
     # --- Log per TensorBoard ---
     def log_tensorboard(self, epoch, train_metrics, val_metrics=None):
         self._log_metrics(epoch, train_metrics, val_metrics)
         self._log_confusion_matrix(epoch, train_metrics, val_metrics)
         self._log_learning_rate(epoch)
+
+        # log distribuzione classi
+        self._log_class_distribution(epoch, train_metrics.get('all_labels'), split="train")
+        if val_metrics and 'all_labels' in val_metrics:
+            self._log_class_distribution(epoch, val_metrics['all_labels'], split="val")
 
     # --- Helper: metriche generali + per classe ---
     def _log_metrics(self, epoch, train_metrics, val_metrics):
@@ -71,3 +78,10 @@ class LoggerUtils:
             return
         current_lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar("Learning Rate", current_lr, epoch)
+        
+    def _log_class_distribution(self, epoch, labels, split="train"):
+        if labels is None:
+            return
+        bincount = torch.bincount(labels)
+        for i, count in enumerate(bincount):
+            self.writer.add_scalar(f"{split}/class_distribution/class_{i}", count.item(), epoch)
