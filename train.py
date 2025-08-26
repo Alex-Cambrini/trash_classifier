@@ -144,7 +144,6 @@ class Trainer:
         loop = tqdm(self.train_loader, desc="Training epoch")
         for inputs, labels in loop:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
-
             all_labels.append(labels)
 
             self.optimizer.zero_grad()
@@ -163,13 +162,15 @@ class Trainer:
         epoch_loss = running_loss / total
         all_labels = torch.cat(all_labels)
 
-        # --- Calcolo metriche sul train set usando self._evaluate ---
-        with torch.no_grad():
-            self.logger.info("Inizio valutazione sul train set...")
-            train_metrics_full = self._evaluate(self.train_loader)
-            train_metrics_full['loss'] = epoch_loss  # Sovrascrivi loss con media reale epoca
-            train_metrics_full['all_labels'] = all_labels 
-            self.logger.info("Fine valutazione sul train set")
+        # --- Calcolo metriche solo se serve ---
+        train_metrics_full = {"loss": epoch_loss, "all_labels": all_labels}
+        if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):             
+            with torch.no_grad():
+                self.logger.info("Inizio valutazione sul train set...")
+                train_metrics_full = self._evaluate(self.train_loader)
+                train_metrics_full['loss'] = epoch_loss
+                train_metrics_full['all_labels'] = all_labels 
+                self.logger.info("Fine valutazione sul train set")
 
         return train_metrics_full, global_step
 
@@ -216,6 +217,9 @@ class Trainer:
                 self._check_early_stopping(val_metrics)
                 if self.best_val_loss == val_metrics['loss']:
                     self._save_model_state("model_best.pth", self.current_epoch, self.best_model_state)
+            else:
+                self.logger.debug(f"Epoca {self.current_epoch}: skip validazione (start_epoch={self.start_epoch}, loss_eval_every={self.loss_eval_every})")
+
 
             # Controllo target accuracy usando metriche già calcolate
             if self.current_epoch % self.accuracy_eval_every == 0 or self.current_epoch == self.epochs:
@@ -231,6 +235,11 @@ class Trainer:
     # --- Early stopping ---
     def _check_early_stopping(self, val_metrics):
         val_loss = val_metrics['loss']
+        self.logger.debug(
+            f"Controllo early stopping epoca {self.current_epoch} | "
+            f"best_val_loss={self.best_val_loss:.4f}, current_val_loss={val_loss:.4f}, "
+            f"no_improve_count={self.no_improve_count}"
+        )
         if self.best_val_loss - val_loss >= self.improvement_rate:
             self.best_val_loss = val_loss
             self.best_model_state = copy.deepcopy(self.model.state_dict())
@@ -242,6 +251,7 @@ class Trainer:
             if self.no_improve_count >= self.patience:
                 self.logger.info("Early stopping attivato")
                 self.early_stop = True
+
 
     # --- Controllo target accuracy ---
     def _check_accuracy_target(self, train_metrics, val_metrics):
