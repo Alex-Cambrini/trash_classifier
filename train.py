@@ -229,7 +229,6 @@ class Trainer:
         self._save_model_state("model_final.pth", self.current_epoch)
         self.logger.info("Fine training")
 
-
     # --- Early stopping ---
     def _check_early_stopping(self, val_metrics):
         val_loss = val_metrics['loss']
@@ -241,21 +240,17 @@ class Trainer:
 
         # Aggiorna best model solo se miglioramento significativo
         if self.best_val_loss - val_loss >= self.improvement_rate:
+            # Aggiorna best_model_state prima di cambiare best_val_loss
+            self.best_model_state = copy.deepcopy(self.model.state_dict())
             self.best_val_loss = val_loss
             self.no_improve_count = 0
             self.logger.info(f"Loss migliorata: {val_loss:.4f}")
-
-            # Aggiorna best_model_state in memoria solo se serve davvero
-            if self.best_model_state is None or (val_loss < self.best_val_loss):
-                self.best_model_state = copy.deepcopy(self.model.state_dict())
-
         else:
             self.no_improve_count += 1
             self.logger.warning(f"Nessun miglioramento ({self.no_improve_count}/{self.patience})")
             if self.no_improve_count >= self.patience:
                 self.logger.info("Early stopping attivato")
                 self.early_stop = True
-
 
     # --- Controllo target accuracy ---
     def _check_accuracy_target(self, train_metrics, val_metrics):
