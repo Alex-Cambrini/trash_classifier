@@ -13,14 +13,14 @@
     "final_test": true,
     "show_preview": true,
     "debug": true,
-    "load_model": true,
+    "load_model": false,
     "model_load_path": "./saved_models/reload.pth"
   },
   "hyper_parameters": {
     "batch_size": 64,
     "weight_decay": 0.005,
     "learning_rate": 0.0005,
-    "learning_rate_scheduler_step": 3,
+    "scheduler_patience_in_val_steps": 2,
     "learning_rate_scheduler_gamma": 0.5,     
     "momentum": 0.9,
     "epochs": 15,
@@ -36,7 +36,7 @@
   },
   "early_stop_parameters": {
     "start_epoch": 1,
-    "loss_evaluation_epochs": 2,
+    "val_loss_every_n_epochs": 2,
     "patience": 3,
     "improvement_rate": 0.1
     }

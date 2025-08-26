@@ -47,10 +47,10 @@
         "momentum": { "type": "number" },
         "epochs": { "type": "integer" },
         "seed": { "type": "integer" },
-        "learning_rate_scheduler_step": { "type": "integer", "minimum": 1 },
+        "scheduler_patience_in_val_steps": { "type": "integer", "minimum": 1 },
         "learning_rate_scheduler_gamma": { "type": "number", "minimum": 0, "maximum": 1 }
       },
-      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs", "seed", "learning_rate_scheduler_step", "learning_rate_scheduler_gamma"],
+      "required": ["batch_size", "weight_decay", "learning_rate", "momentum", "epochs", "seed", "scheduler_patience_in_val_steps", "learning_rate_scheduler_gamma"],
       "additionalProperties": false
     },
     "train_parameters": {
@@ -70,11 +70,11 @@
       "type": "object",
       "properties": {
         "start_epoch": { "type": "integer", "minimum": 0 },
-        "loss_evaluation_epochs": { "type": "integer", "minimum": 1 },
+        "val_loss_every_n_epochs": { "type": "integer", "minimum": 1 },
         "patience": { "type": "integer", "minimum": 1 },
         "improvement_rate": { "type": "number", "minimum": 0 }
       },
-      "required": ["start_epoch", "loss_evaluation_epochs", "patience", "improvement_rate"],
+      "required": ["start_epoch", "val_loss_every_n_epochs", "patience", "improvement_rate"],
       "additionalProperties": false
     }
   },

@@ -85,11 +85,14 @@ class Trainer:
             momentum=self.config.hyper_parameters.momentum,
             weight_decay=self.config.hyper_parameters.weight_decay
         )
+
+        # La patience di ReduceLROnPlateau conta i controlli di validazione consecutivi senza miglioramento,
+        # non le epoche reali. L'early stopping invece conta le epoche reali senza miglioramento.
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer,
             mode='min',
             factor=self.config.hyper_parameters.learning_rate_scheduler_gamma,
-            patience=self.config.hyper_parameters.learning_rate_scheduler_step
+            patience=self.config.hyper_parameters.scheduler_patience_in_val_steps
         )
 
     # --- Parametri di training & early stop ---
@@ -108,7 +111,7 @@ class Trainer:
 
         # Early stop parameters
         self.start_epoch = config.early_stop_parameters.start_epoch
-        self.loss_eval_every = config.early_stop_parameters.loss_evaluation_epochs
+        self.loss_eval_every = config.early_stop_parameters.val_loss_every_n_epochs
         self.patience = config.early_stop_parameters.patience
         self.improvement_rate = config.early_stop_parameters.improvement_rate
 
@@ -218,6 +221,9 @@ class Trainer:
                 val_metrics = self._evaluate(self.val_loader)
                 self.scheduler.step(val_metrics['loss'])
                 self._check_early_stopping(val_metrics)
+                self.logger.debug(
+                    f"Scheduler step called | current val_loss={val_metrics['loss']:.4f} | "
+                    f"scheduler patience={self.scheduler.patience}")
                 if self.best_val_loss == val_metrics['loss']:
                     self._save_model_state("model_best.pth", self.current_epoch, self.best_model_state)
             else:
@@ -331,7 +337,7 @@ class Trainer:
             "momentum": self.config.hyper_parameters.momentum,
             "weight_decay": self.config.hyper_parameters.weight_decay,
             "scheduler_gamma": self.config.hyper_parameters.learning_rate_scheduler_gamma,
-            "scheduler_step": self.config.hyper_parameters.learning_rate_scheduler_step,
+            "scheduler_step": self.config.hyper_parameters.scheduler_patience_in_val_steps,
             "accuracy_target": self.accuracy_target,
             "loss_eval_every": self.loss_eval_every,
             "patience": self.patience,
