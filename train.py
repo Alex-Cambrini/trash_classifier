@@ -200,17 +200,6 @@ class Trainer:
             self.current_epoch = epoch + 1
             self.logger.info(f"Inizio epoca {self.current_epoch}/{self.epochs}")
 
-            # --- MONITOR DISTRIBUZIONE CLASSI ---
-            try:
-                all_labels = []
-                for _, labels in self.train_loader:
-                    all_labels.append(labels)
-                all_labels = torch.cat(all_labels)
-                self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {torch.bincount(all_labels)}")
-            except Exception as e:
-                self.logger.warning(f"Impossibile monitorare distribuzione classi: {e}")
-            # --- FINE MONITOR ---
-
             # Training per un'epoca
             train_metrics, global_step = self.train_one_epoch(global_step)
 
@@ -229,7 +218,6 @@ class Trainer:
             else:
                 self.logger.debug(f"Epoca {self.current_epoch}: skip validazione (start_epoch={self.start_epoch}, loss_eval_every={self.loss_eval_every})")
 
-
             # Controllo target accuracy usando metriche già calcolate
             if self.current_epoch % self.accuracy_eval_every == 0 or self.current_epoch == self.epochs:
                 self._check_accuracy_target(train_metrics, val_metrics)
@@ -240,6 +228,7 @@ class Trainer:
 
         self._save_model_state("model_final.pth", self.current_epoch)
         self.logger.info("Fine training")
+
 
     # --- Early stopping ---
     def _check_early_stopping(self, val_metrics):
