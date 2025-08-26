@@ -178,7 +178,7 @@ class Trainer:
         if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):
             with torch.no_grad():
                 self.logger.info("Inizio valutazione completa sul train set...")
-                metrics = self._evaluate(self.train_loader)
+                metrics = self._evaluate_light(self.train_loader)
                 train_metrics_full.update(metrics)
                 train_metrics_full['loss'] = epoch_loss  # mantiene l'epoch loss reale
                 train_metrics_full['all_labels'] = all_labels
@@ -214,7 +214,7 @@ class Trainer:
             if self.current_epoch >= self.start_epoch and (
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
-                val_metrics = self._evaluate(self.val_loader)
+                val_metrics = self._evaluate_full(self.val_loader)
                 self.scheduler.step(val_metrics['loss'])
                 self._check_early_stopping(val_metrics)
                 self.logger.debug(
@@ -273,23 +273,35 @@ class Trainer:
             self.logger.info("Target accuracy raggiunta. Interrompo il training.")
             self.target_accuracy_reached = True
 
-    # --- Valutazione completa di un loader ---
-    def _evaluate(self, loader):
+
+    # --- Valutazione “leggera” --- 
+    def _evaluate_light(self, loader):
+        """Compute only metrics needed for early stopping / target accuracy."""
         loss = compute_loss(self.model, loader, self.criterion, self.device)
         acc = compute_accuracy(self.model, loader, self.device)
         per_class_acc = compute_per_class_accuracy(self.model, loader, self.device, self.num_classes)
-        precision, recall, f1 = compute_precision_recall_f1(self.model, loader, self.device, self.num_classes)
-        cm = compute_confusion_matrix_metric(self.model, loader, self.device, self.num_classes)
 
         return {
             "loss": loss,
             "accuracy": acc,
-            "per_class_accuracy": per_class_acc,
+            "per_class_accuracy": per_class_acc
+        }
+
+    # --- Valutazione completa ---
+    def _evaluate_full(self, loader):
+        """Compute all metrics, heavy calculations included."""
+        metrics = self._evaluate_light(loader)
+        precision, recall, f1 = compute_precision_recall_f1(self.model, loader, self.device, self.num_classes)
+        cm = compute_confusion_matrix_metric(self.model, loader, self.device, self.num_classes)
+
+        metrics.update({
             "precision": precision,
             "recall": recall,
             "f1": f1,
             "confusion_matrix": cm
-        }
+        })
+        return metrics
+
 
     # --- Test ---
     def test_model(self, use_current_model=False):
@@ -299,8 +311,9 @@ class Trainer:
             if not self._load_model_state(self.model_load_path):
                 self.logger.error("Impossibile caricare modello per testing. Esco.")
                 return None
+                
             
-        test_metrics = self._evaluate(self.test_loader)
+        test_metrics = self._evaluate_full(self.test_loader)
 
         # scrive su writer esistente (dal train o appena creato)
         self.writer.add_scalar("Loss/test_final", test_metrics['loss'], self.current_epoch)
