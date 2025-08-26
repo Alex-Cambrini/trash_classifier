@@ -5,9 +5,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 import numpy as np
-from logger import get_logger
 
-logger = get_logger()
 
 class DataLoaderManager:
     """
@@ -15,18 +13,19 @@ class DataLoaderManager:
     con logica separata per chiarezza e riutilizzabilità.
     """
 
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self, config, logger):
+        self.config = config
+        self.logger = logger
         self.train_loader = None
         self.val_loader = None
         self.test_loader = None
         self.classes = None
-        self.seed = self.cfg.hyper_parameters.seed
+        self.seed = self.config.hyper_parameters.seed
         self.generator = torch.Generator().manual_seed(self.seed)
 
     def get_transforms(self):
         """Restituisce la pipeline di trasformazioni standard."""
-        logger.debug("Uso trasformazioni standard")
+        self.logger.debug("Uso trasformazioni standard")
         return transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -38,10 +37,10 @@ class DataLoaderManager:
         Gestisce l'augmentazione, carica l'intero dataset e lo divide
         in train, validazione e test.
         """            
-        dataset_folder = self.cfg.input.dataset_folder
+        dataset_folder = self.config.input.dataset_folder
 
         if not os.path.exists(dataset_folder):
-            logger.error(f"La cartella dataset '{dataset_folder}' non esiste.")
+            self.logger.error(f"La cartella dataset '{dataset_folder}' non esiste.")
             sys.exit(1)
 
         # 1. Carica l'intero dataset e calcola le dimensioni degli split
@@ -49,10 +48,10 @@ class DataLoaderManager:
         dataset = datasets.ImageFolder(dataset_folder, transform=transform)
         self.classes = dataset.classes
         total_size = len(dataset)
-        train_size = int(total_size * self.cfg.train_parameters.train_split)
-        val_size = int(total_size * self.cfg.train_parameters.val_split)
+        train_size = int(total_size * self.config.train_parameters.train_split)
+        val_size = int(total_size * self.config.train_parameters.val_split)
         test_size = total_size - train_size - val_size
-        logger.debug(f"Split dataset: train={train_size}, val={val_size}, test={test_size}")
+        self.logger.debug(f"Split dataset: train={train_size}, val={val_size}, test={test_size}")
 
         # 2. Splitta il dataset in modo casuale e ritorna le tre parti
         return random_split(dataset, [train_size, val_size, test_size], generator=self.generator)
@@ -75,7 +74,7 @@ class DataLoaderManager:
         samples_weight = class_weights[targets]
         samples_weight = torch.from_numpy(samples_weight).double()
 
-        logger.debug("WeightedRandomSampler creato per bilanciare le classi nel training.")
+        self.logger.debug("WeightedRandomSampler creato per bilanciare le classi nel training.")
         return WeightedRandomSampler(samples_weight, len(samples_weight))
 
     def load_data(self):
@@ -89,9 +88,9 @@ class DataLoaderManager:
         train_sampler = self._create_train_sampler(train_dataset)
 
         # 3. Crea i DataLoader finali
-        batch_size = self.cfg.hyper_parameters.batch_size
+        batch_size = self.config.hyper_parameters.batch_size
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=4)
         self.val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
         self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-        logger.debug("DataLoader creati con successo.")
+        self.logger.debug("DataLoader creati con successo.")
