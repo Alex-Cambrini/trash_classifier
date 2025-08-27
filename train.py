@@ -44,10 +44,6 @@ class Trainer:
 
         #--- Logger definitivo ---
         self._flush_temp_logger()
-       
-
-
-
         self._init_writer()
         dummy_input = torch.randn(1, 3, 224, 224).to(self.device)
         self.writer.add_graph(self.model, dummy_input)
@@ -128,7 +124,7 @@ class Trainer:
                 self.temp_logger.error(f"Model file non trovato: {self.model_load_path}")
                 sys.exit(1)
             checkpoint = torch.load(path_obj)
-            run_name = checkpoint.get("run_name")
+            run_name = checkpoint.get("meta", {}).get("run_name")
             if run_name is None:
                 self.temp_logger.error(f"run_name mancante nel checkpoint: {self.model_load_path}")
                 sys.exit(1)
@@ -170,20 +166,21 @@ class Trainer:
         epoch_loss = running_loss / total
         all_labels = torch.cat(all_labels_list)
 
-        self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {class_counts}")
+        self.logger.info(f"Distribuzione classi train (epoca {self.current_epoch}): {class_counts.int()}")
 
         # --- Calcolo metriche solo se necessario ---
         train_metrics_full = {"loss": epoch_loss, "all_labels": all_labels}
 
         if (self.current_epoch % self.accuracy_eval_every == 0) or (self.current_epoch == self.epochs):
             with torch.no_grad():
-                self.logger.info("Inizio valutazione completa sul train set...")
+                self.logger.info("Inizio Valutazione Light (Train Set)")
                 metrics = self._evaluate_light(self.train_loader)
+                self.logger.info("Fine Valutazione Light (Train Set)")
+                self.logger.debug("Aggiornamento Delle Metriche Di Train")
                 train_metrics_full.update(metrics)
-                train_metrics_full['loss'] = epoch_loss  # mantiene l'epoch loss reale
+                train_metrics_full['loss'] = epoch_loss
                 train_metrics_full['all_labels'] = all_labels
-                self.logger.info("Fine valutazione sul train set")
-
+                self.logger.info("Metriche Aggiornate")
         return train_metrics_full, global_step
 
 
@@ -214,7 +211,9 @@ class Trainer:
             if self.current_epoch >= self.start_epoch and (
                 (self.current_epoch - self.start_epoch) % self.loss_eval_every == 0 or self.current_epoch == self.epochs
             ):
+                self.logger.info(f"Inizio valutazione completa sul set di validazione (epoca {self.current_epoch})...")
                 val_metrics = self._evaluate_full(self.val_loader)
+                self.logger.info(f"Fine valutazione completa sul set di validazione (epoca {self.current_epoch}) | Loss: {val_metrics['loss']:.4f}, Acc: {val_metrics['accuracy']:.4f}")
                 self.scheduler.step(val_metrics['loss'])
                 self._check_early_stopping(val_metrics)
                 self.logger.debug(
@@ -240,6 +239,9 @@ class Trainer:
     # --- Early stopping ---
     def _check_early_stopping(self, val_metrics):
         val_loss = val_metrics['loss']
+
+#
+
         self.logger.debug(
             f"Controllo early stopping epoca {self.current_epoch} | "
             f"best_val_loss={self.best_val_loss:.4f}, current_val_loss={val_loss:.4f}, "
@@ -305,16 +307,17 @@ class Trainer:
 
     # --- Test ---
     def test_model(self, use_current_model=False):
-        self.logger.info("Inizio testing")
+        self.logger.info("Test finale")
+        self.logger.info("Inizio testing...")
 
         if not use_current_model:
             if not self._load_model_state(self.model_load_path):
                 self.logger.error("Impossibile caricare modello per testing. Esco.")
                 return None
                 
-            
+        self.logger.info("Inizio valutazione completa")    
         test_metrics = self._evaluate_full(self.test_loader)
-
+        self.logger.info("Fine valutazione completa")    
         # scrive su writer esistente (dal train o appena creato)
         self.writer.add_scalar("Loss/test_final", test_metrics['loss'], self.current_epoch)
         self.writer.add_scalar("Accuracy/test_final", test_metrics['accuracy'], self.current_epoch)
@@ -354,7 +357,6 @@ class Trainer:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'meta': meta
         }, path)
-        
         self.logger.info(f"Modello salvato in: {path} con parametri: {meta}")
 
     # --- Caricamento modello ---
@@ -398,8 +400,6 @@ class Trainer:
             self.logger.error(f"Errore caricamento modello: {e}")
             sys.exit(-1)
 
-
-
     def _verify_checkpoint_params(self, meta):
         """Compare saved checkpoint parameters with current configuration."""
         check_params = {
@@ -431,7 +431,8 @@ class Trainer:
     
     def _flush_temp_logger(self):
         log_level = logging.DEBUG if self.debug else logging.INFO
-        self.logger = get_logger(level=log_level, run_name=get_run_name())
+        self.logger = get_logger(run_name=get_run_name())
+        self.logger.setLevel(log_level)
 
         # Se esiste un MemoryHandler nel logger temporaneo, flusha tutto sul FileHandler
         if hasattr(self.temp_logger, "memory_handler"):
