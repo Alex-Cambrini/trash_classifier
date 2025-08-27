@@ -15,7 +15,8 @@ def main():
     numexpr.set_num_threads(16)
 
     # --- Logger temporaneo per il caricamento config ---
-    temp_logger = get_logger(run_name="temp_log", level=logging.DEBUG, memory_only=True)
+    temp_logger = get_logger(run_name="temp_log", memory_only=True)
+    temp_logger.setLevel(logging.DEBUG)
     temp_logger.info("Avvio script e caricamento configurazione...")
 
     # --- Caricamento e validazione config ---
@@ -47,14 +48,22 @@ def main():
     trainer = Trainer(config, data_manager, num_classes, temp_logger)
     logger = get_logger(run_name=get_run_name())
 
+    logger.info(f"config.parameters.train = {config.parameters.train}")
+    logger.info(f"config.parameters.final_test = {config.parameters.final_test}")
+
     if config.parameters.train and config.parameters.final_test:
+        logger.info("Decisione: train + test finale")
         logger.info(f"Numero di epoche: {config.hyper_parameters.epochs}")
         trainer.train()
         trainer.test_model(use_current_model=True)
     elif config.parameters.train:
+        logger.info("Decisione: solo train")
         trainer.train()
-    elif config.parameters.test:
-        trainer.test_model()
+    elif config.parameters.final_test:
+        logger.info("Decisione: solo test finale")
+        trainer.test_model()    
+    else:
+        logger.warning("Nessuna azione selezionata in config.parameters")
 
 
 if __name__ == "__main__":
