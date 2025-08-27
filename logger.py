@@ -19,9 +19,8 @@ class ColorFormatter(logging.Formatter):
         msg = super().format(record)
         return f"{color}{msg}{Style.RESET_ALL}"
 
-def get_logger(run_name, level=logging.INFO, log_dir="logs", memory_only=False):
+def get_logger(run_name, log_dir="logs", memory_only=False):
     logger = logging.getLogger(run_name)
-    logger.setLevel(level)
     if not logger.hasHandlers():
         # StreamHandler colorato per il terminale
         ch = logging.StreamHandler()
