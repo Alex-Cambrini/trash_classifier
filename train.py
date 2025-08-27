@@ -21,9 +21,10 @@ from metrics import (
     compute_per_class_accuracy,
     compute_precision_recall_f1
 )
+from utils.evaluation import EvaluationUtils
 
 
-class Trainer:
+class Trainer(EvaluationUtils):
     def __init__(self, config, data_manager, num_classes, temp_logger):
         self.config = config
         self.data_manager = data_manager
@@ -274,36 +275,6 @@ class Trainer:
         if train_acc > self.accuracy_target and val_acc > self.accuracy_target:
             self.logger.info("Target accuracy raggiunta. Interrompo il training.")
             self.target_accuracy_reached = True
-
-
-    # --- Valutazione “leggera” --- 
-    def _evaluate_light(self, loader):
-        """Compute only metrics needed for early stopping / target accuracy."""
-        loss = compute_loss(self.model, loader, self.criterion, self.device)
-        acc = compute_accuracy(self.model, loader, self.device)
-        per_class_acc = compute_per_class_accuracy(self.model, loader, self.device, self.num_classes)
-
-        return {
-            "loss": loss,
-            "accuracy": acc,
-            "per_class_accuracy": per_class_acc
-        }
-
-    # --- Valutazione completa ---
-    def _evaluate_full(self, loader):
-        """Compute all metrics, heavy calculations included."""
-        metrics = self._evaluate_light(loader)
-        precision, recall, f1 = compute_precision_recall_f1(self.model, loader, self.device, self.num_classes)
-        cm = compute_confusion_matrix_metric(self.model, loader, self.device, self.num_classes)
-
-        metrics.update({
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "confusion_matrix": cm
-        })
-        return metrics
-
 
     # --- Test ---
     def test_model(self, use_current_model=False):
