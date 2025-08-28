@@ -6,7 +6,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from augment_dataset import AugmentationRunner
 from utils.config_loader import ConfigLoader
 import logging
-from logger import get_logger
+from utils.logger import get_logger
 from datetime import datetime
 
 def run_augmentation():
