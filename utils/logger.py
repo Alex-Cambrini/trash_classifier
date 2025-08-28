@@ -47,3 +47,26 @@ def get_logger(run_name, log_dir="logs", memory_only=False):
     logging.getLogger("PIL").setLevel(logging.WARNING)
 
     return logger
+
+
+def flush_temp_logger(run_name, log_level, temp_logger):
+
+    logger = get_logger(run_name)
+    logger.setLevel(log_level)
+
+    # Se esiste un MemoryHandler nel logger temporaneo, flusha tutto sul FileHandler
+    if hasattr(temp_logger, "memory_handler"):
+        mem_handler = temp_logger.memory_handler
+        Path("logs").mkdir(parents=True, exist_ok=True)
+        fh = logging.FileHandler(f"logs/{run_name}.log", mode="a")
+        fh.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+
+        # Imposta come target e flush
+        mem_handler.setTarget(fh)
+        mem_handler.flush()
+
+        # Rimuove il MemoryHandler dal logger temporaneo per evitare doppie scritture
+        temp_logger.removeHandler(mem_handler)
+        del temp_logger.memory_handler
+        
+    return logger
