@@ -77,20 +77,30 @@ class DataLoaderManager:
         self.logger.debug("WeightedRandomSampler creato per bilanciare le classi nel training.")
         return WeightedRandomSampler(samples_weight, len(samples_weight))
 
-    def load_data(self):
-        """
-        Metodo principale che prepara i DataLoader per training, validazione e test.
-        """
-        # 1. Prepara e splitta il dataset
-        train_dataset, val_dataset, test_dataset = self._prepare_datasets()
-
-        # 2. Crea il campionatore pesato solo per il training
+    def load_train_val(self):
+        """Crea solo train_loader e val_loader"""
+        train_dataset, val_dataset, _ = self._prepare_datasets()
         train_sampler = self._create_train_sampler(train_dataset)
-
-        # 3. Crea i DataLoader finali
         batch_size = self.config.hyper_parameters.batch_size
-        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=4)
-        self.val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-        self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                                       sampler=train_sampler, num_workers=4)
+        self.val_loader = DataLoader(val_dataset, batch_size=batch_size,
+                                     shuffle=False, num_workers=4)
+        
+        if len(self.train_loader.dataset) == 0 or len(self.val_loader.dataset) == 0:
+            self.logger.error("Train o validation dataset vuoto!")
+            sys.exit(1)
 
-        self.logger.debug("DataLoader creati con successo.")
+        self.logger.debug("Train e Val DataLoader creati con successo.")
+
+    def load_test_only(self):
+        """Crea test_loader e lo salva in self.test_loader"""
+        _, _, test_dataset = self._prepare_datasets()
+        batch_size = self.config.hyper_parameters.batch_size
+        self.test_loader = DataLoader(test_dataset, batch_size=batch_size,
+                                    shuffle=False, num_workers=4)
+
+        if len(self.test_loader.dataset) == 0:
+            self.logger.warning("Test dataset vuoto!")
+        else:
+            self.logger.debug("Test DataLoader creato con successo.")
