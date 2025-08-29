@@ -70,12 +70,16 @@ def main():
         logger.info("Decisione: train + test finale")
 
         data_manager.load_train_val()
+        logger_utils.class_names = data_manager.classes
+
         trainer, model, criterion, device = init_trainer(
             config, data_manager, run_name, logger, writer, logger_utils
         )
 
         if dataset_analysis:
             analyze_dataset(min_samples_per_class, dataset_folder, logger)
+        else:
+            logger.info(f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}")
 
         logger.info(f"Numero di epoche: {epochs_number}")
         trainer.train()
@@ -91,12 +95,16 @@ def main():
         logger.info("Decisione: solo train")
 
         data_manager.load_train_val()
+        logger_utils.class_names = data_manager.classes
         trainer, _, _, _ = init_trainer(
             config, data_manager, run_name, logger, writer, logger_utils
         )
 
         if dataset_analysis:
             analyze_dataset(min_samples_per_class, dataset_folder, logger)
+        else:
+            logger.info(f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}")
+
 
         logger.info(f"Numero di epoche: {epochs_number}")
         trainer.train()
@@ -105,6 +113,8 @@ def main():
         logger.info("Decisione: solo test finale")
 
         data_manager.load_test_only()
+        logger_utils.class_names = data_manager.classes
+
         model, criterion, device = create_model(
             config, len(data_manager.classes), logger
         )
