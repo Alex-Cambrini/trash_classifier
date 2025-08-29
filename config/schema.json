@@ -33,9 +33,10 @@
         "show_preview": { "type": "boolean" },
         "debug": { "type": "boolean" },
         "load_model": { "type": "boolean" },
-        "model_load_path": { "type": "string" }
+        "model_load_path": { "type": "string" },
+        "analyze_dataset": { "type": "boolean" }
       },
-      "required": ["train", "final_test", "show_preview", "debug", "load_model", "model_load_path"],
+      "required": ["train", "final_test", "show_preview", "debug", "load_model", "model_load_path", "analyze_dataset"],
       "additionalProperties": false
     },
     "hyper_parameters": {
