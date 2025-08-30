@@ -3,27 +3,32 @@ import jsonschema
 from pathlib import Path
 from types import SimpleNamespace
 
+
 class ConfigLoader:
+    """
+    Gestisce il caricamento e la validazione di un file di configurazione JSON
+    rispetto a uno schema JSON (JSON Schema).
+    """
     def __init__(self, config_path: str, schema_path: str, logger):
         self.config_path = Path(config_path)
         self.schema_path = Path(schema_path)
         self.logger = logger
 
-    def _dict_to_namespace(self, d):
-        if isinstance(d, dict):
-            return SimpleNamespace(**{k: self._dict_to_namespace(v) for k, v in d.items()})
-        elif isinstance(d, list):
-            return [self._dict_to_namespace(i) for i in d]
-        else:
-            return d
-
     def load(self) -> object | None:
+        """
+        Carica il file di configurazione, lo valida contro lo schema JSON
+        e lo converte in un oggetto SimpleNamespace ricorsivo.
+        """
         if not self.config_path.is_file():
-            self.logger.error(f"Errore: il file di configurazione '{self.config_path}' non esiste.")
+            self.logger.error(
+                f"Errore: il file di configurazione '{self.config_path}' non esiste."
+            )
             return None
 
         if not self.schema_path.is_file():
-            self.logger.error(f"Errore: il file schema '{self.schema_path}' non esiste.")
+            self.logger.error(
+                f"Errore: il file schema '{self.schema_path}' non esiste."
+            )
             return None
 
         if self.config_path.suffix != ".json" or self.schema_path.suffix != ".json":
@@ -31,7 +36,9 @@ class ConfigLoader:
             return None
 
         try:
-            self.logger.info(f"Caricamento file di configurazione da {self.config_path}")
+            self.logger.info(
+                f"Caricamento file di configurazione da {self.config_path}"
+            )
             with open(self.config_path, "r") as f:
                 config_data = json.load(f)
 
@@ -47,7 +54,9 @@ class ConfigLoader:
             return None
 
         except jsonschema.ValidationError as e:
-            self.logger.error(f"Errore di validazione del file di configurazione: {e.message}")
+            self.logger.error(
+                f"Errore di validazione del file di configurazione: {e.message}"
+            )
             return None
 
         except jsonschema.SchemaError as e:
@@ -57,3 +66,14 @@ class ConfigLoader:
         config_obj = self._dict_to_namespace(config_data)
         self.logger.info("Configurazione caricata e validata correttamente.")
         return config_obj
+
+    def _dict_to_namespace(self, d):
+        """Converte ricorsivamente un dizionario o una lista in SimpleNamespace"""
+        if isinstance(d, dict):
+            return SimpleNamespace(
+                **{k: self._dict_to_namespace(v) for k, v in d.items()}
+            )
+        elif isinstance(d, list):
+            return [self._dict_to_namespace(i) for i in d]
+        else:
+            return d
