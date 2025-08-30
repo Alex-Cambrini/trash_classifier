@@ -2,26 +2,35 @@ import os
 import shutil
 import sys
 from collections import Counter
+from typing import List, Tuple
 from PIL import Image
 import tqdm
 import matplotlib.pyplot as plt
 from transform_factory import get_transforms
 
+
 class AugmentationRunner:
-    def __init__(self, config, logger, run_name):
+    """Classe per eseguire augmentation di dataset di immagini e analizzarne la distribuzione."""
+
+    def __init__(self, config: object, logger: object, run_name: str) -> None:
         self.config = config
         self.logger = logger
         self.run_name = run_name
 
-    # --- Funzioni di utilità ---
-    def _ensure_dirs(self, dirs):
+    def _ensure_dirs(self, dirs: List[str]) -> None:
         """Crea le cartelle se non esistono."""
         for d in dirs:
             os.makedirs(d, exist_ok=True)
 
-    def _scan_images(self, input_dir, valid_ext):
+    def _scan_images(
+        self, input_dir: str, valid_ext: List[str]
+    ) -> Tuple[List[Tuple[str, str]], List[str]]:
         """Restituisce lista di tuple (cls, img_name) e lista classi presenti."""
-        class_names = [d for d in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, d))]
+        class_names = [
+            d
+            for d in os.listdir(input_dir)
+            if os.path.isdir(os.path.join(input_dir, d))
+        ]
         images = []
         for cls in class_names:
             cls_path = os.path.join(input_dir, cls)
@@ -33,40 +42,70 @@ class AugmentationRunner:
                             im.verify()
                         images.append((cls, img_name))
                     except Exception:
-                        self.logger.warning(f"Immagine corrotta o non apribile: {img_path}")
+                        self.logger.warning(
+                            f"Immagine corrotta o non apribile: {img_path}"
+                        )
         return images, class_names
 
-    # --- Preparazione directory ---
-    def _prepare_output_dir(self, output_dir, class_names, overwrite, analysis_dirs):
+    def _prepare_output_dir(
+        self,
+        output_dir: str,
+        class_names: List[str],
+        overwrite: bool,
+        analysis_dirs: List[str],
+    ) -> None:
         """Crea cartelle di output e cancella quelle esistenti se overwrite=True."""
         if overwrite:
             if os.path.exists(output_dir):
-                self.logger.info(f"Overwrite abilitato: elimino la cartella esistente '{output_dir}'")
+                self.logger.info(
+                    f"Overwrite abilitato: elimino la cartella esistente '{output_dir}'"
+                )
                 shutil.rmtree(output_dir)
             for dir_path in analysis_dirs:
                 if os.path.exists(dir_path):
-                    self.logger.debug(f"Cancellazione cartella di report esistente '{dir_path}'")
+                    self.logger.debug(
+                        f"Cancellazione cartella di report esistente '{dir_path}'"
+                    )
                     shutil.rmtree(dir_path)
         else:
             if os.path.exists(output_dir):
-                self.logger.error(f"La cartella '{output_dir}' esiste già. Imposta overwrite=true per sovrascrivere.")
+                self.logger.error(
+                    f"La cartella '{output_dir}' esiste già. Imposta overwrite=true per sovrascrivere."
+                )
                 sys.exit(1)
 
-        self._ensure_dirs([output_dir] + [os.path.join(output_dir, cls) for cls in class_names] + analysis_dirs)
+        self._ensure_dirs(
+            [output_dir]
+            + [os.path.join(output_dir, cls) for cls in class_names]
+            + analysis_dirs
+        )
 
-    # --- Funzione di augmentazione ---
-    def _create_augmented_dataset(self, input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions):
+    def _create_augmented_dataset(
+        self,
+        input_dir: str,
+        output_dir: str,
+        min_aug: int,
+        max_aug: int,
+        copy_original: bool,
+        valid_extensions: List[str],
+    ) -> None:
+        """
+        Crea il dataset augmentato e lo salva in output_dir.
+        """
         images, _ = self._scan_images(input_dir, valid_extensions)
 
         class_counts = Counter(cls for cls, _ in images)
         max_count = max(class_counts.values())
         min_count = min(class_counts.values())
+        self.logger.info(
+            f"Parametri di augmentation: min_aug={min_aug}, max_aug={max_aug}"
+        )
+        self.logger.info(f"Copia immagini originali: {copy_original}")
 
         transform = get_transforms()
         total_aug = 0
 
         self.logger.info("Inizio processamento immagini")
-        self.logger.info(f"Copia immagini originali: {copy_original}")
 
         for cls, img_name in tqdm.tqdm(images, desc="Elaborazione immagini"):
             in_path = os.path.join(input_dir, cls, img_name)
@@ -99,8 +138,16 @@ class AugmentationRunner:
         self.logger.debug(f"Generate {total_aug} immagini augmentate.")
         self.logger.info("Augmentazione completata.")
 
-    # --- Funzione di analisi ---
-    def _analyze_dataset(self, input_dir, valid_extensions, show_chart, output_dir):
+    def _analyze_dataset(
+        self,
+        input_dir: str,
+        valid_extensions: List[str],
+        show_chart: bool,
+        output_dir: str,
+    ) -> None:
+        """
+        Analizza la distribuzione delle immagini per classe e salva grafico.
+        """
         self._ensure_dirs([output_dir])
         images, _ = self._scan_images(input_dir, valid_extensions)
         class_counts = Counter(cls for cls, _ in images)
@@ -109,7 +156,7 @@ class AugmentationRunner:
             self.logger.info(f"Classe '{cls}': {count} immagini")
 
         plt.figure(figsize=(10, 6))
-        plt.bar(class_counts.keys(), class_counts.values(), color='skyblue')
+        plt.bar(class_counts.keys(), class_counts.values(), color="skyblue")
         plt.title("Distribuzione immagini per classe")
         plt.ylabel("Numero immagini")
         plt.xticks(rotation=45)
@@ -119,8 +166,10 @@ class AugmentationRunner:
             plt.show()
         plt.close()
 
-    # --- Funzione principale ---
-    def run(self):
+    def run(self) -> None:
+        """
+        Esegue l'intero processo di augmentation e analisi del dataset.
+        """
         input_dir = self.config.input_dir
         output_dir = self.config.output_dir
         analysis_dir = self.config.analisys_dir
@@ -132,18 +181,31 @@ class AugmentationRunner:
         max_aug = self.config.max_augmented_per_image
         copy_original = self.config.copy_original
 
-        self.logger.debug(f"Show chart: {show_chart} (i grafici verranno mostrati solo se TRUE)")
+        self.logger.debug(f"Show chart: {show_chart}")
 
         _, class_names = self._scan_images(input_dir, valid_extensions)
 
-        self._prepare_output_dir(output_dir, class_names, overwrite,
-                                 [os.path.join(analysis_dir, "before"),
-                                  os.path.join(analysis_dir, "after")])
+        self._prepare_output_dir(
+            output_dir,
+            class_names,
+            overwrite,
+            [os.path.join(analysis_dir, "before"), os.path.join(analysis_dir, "after")],
+        )
 
-        self._analyze_dataset(input_dir, valid_extensions, show_chart,
-                              output_dir=os.path.join(analysis_dir, "before"))
+        self._analyze_dataset(
+            input_dir,
+            valid_extensions,
+            show_chart,
+            output_dir=os.path.join(analysis_dir, "before"),
+        )
 
-        self._create_augmented_dataset(input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions)
+        self._create_augmented_dataset(
+            input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions
+        )
 
-        self._analyze_dataset(output_dir, valid_extensions, show_chart,
-                              output_dir=os.path.join(analysis_dir, "after"))
+        self._analyze_dataset(
+            output_dir,
+            valid_extensions,
+            show_chart,
+            output_dir=os.path.join(analysis_dir, "after"),
+        )
