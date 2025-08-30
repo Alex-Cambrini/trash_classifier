@@ -1,10 +1,13 @@
 import os
 import sys
+import numpy as np
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+from typing import Tuple
+from torch.utils.data import Dataset
+from torch.utils.data import Sampler
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
-import numpy as np
 
 
 class DataLoaderManager:
@@ -12,7 +15,6 @@ class DataLoaderManager:
     Gestisce il caricamento e la preparazione dei DataLoader,
     con logica separata per chiarezza e riutilizzabilità.
     """
-
     def __init__(self, config, logger):
         self.config = config
         self.logger = logger
@@ -23,20 +25,55 @@ class DataLoaderManager:
         self.seed = self.config.hyper_parameters.seed
         self.generator = torch.Generator().manual_seed(self.seed)
 
-    def get_transforms(self):
+    def load_train_val(self) -> None:
+        """Crea solo train_loader e val_loader"""
+        train_dataset, val_dataset, _ = self._prepare_datasets()
+        train_sampler = self._create_train_sampler(train_dataset)
+        batch_size = self.config.hyper_parameters.batch_size
+        self.train_loader = DataLoader(
+            train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=4
+        )
+        self.val_loader = DataLoader(
+            val_dataset, batch_size=batch_size, shuffle=False, num_workers=4
+        )
+
+        if len(self.train_loader.dataset) == 0 or len(self.val_loader.dataset) == 0:
+            self.logger.error("Train o validation dataset vuoto!")
+            sys.exit(1)
+
+        self.logger.debug("Train e Val DataLoader creati con successo.")
+
+    def load_test_only(self) -> None:
+        """Crea test_loader e lo salva in self.test_loader"""
+        _, _, test_dataset = self._prepare_datasets()
+        batch_size = self.config.hyper_parameters.batch_size
+        self.test_loader = DataLoader(
+            test_dataset, batch_size=batch_size, shuffle=False, num_workers=4
+        )
+
+        if len(self.test_loader.dataset) == 0:
+            self.logger.warning("Test dataset vuoto!")
+        else:
+            self.logger.debug("Test DataLoader creato con successo.")
+
+    def get_transforms(self) -> transforms.Compose:
         """Restituisce la pipeline di trasformazioni standard."""
         self.logger.debug("Uso trasformazioni standard")
-        return transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
+        return transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )
 
-    def _prepare_datasets(self):
+    def _prepare_datasets(self) -> Tuple[Dataset, Dataset, Dataset]:
         """
         Gestisce l'augmentazione, carica l'intero dataset e lo divide
         in train, validazione e test.
-        """            
+        """
         dataset_folder = self.config.input.dataset_folder
 
         if not os.path.exists(dataset_folder):
@@ -51,12 +88,16 @@ class DataLoaderManager:
         train_size = int(total_size * self.config.train_parameters.train_split)
         val_size = int(total_size * self.config.train_parameters.val_split)
         test_size = total_size - train_size - val_size
-        self.logger.debug(f"Split dataset: train={train_size}, val={val_size}, test={test_size}")
+        self.logger.debug(
+            f"Split dataset: train={train_size}, val={val_size}, test={test_size}"
+        )
 
         # 2. Splitta il dataset in modo casuale e ritorna le tre parti
-        return random_split(dataset, [train_size, val_size, test_size], generator=self.generator)
+        return random_split(
+            dataset, [train_size, val_size, test_size], generator=self.generator
+        )
 
-    def _create_train_sampler(self, train_dataset):
+    def _create_train_sampler(self, train_dataset: Dataset) -> Sampler:
         """
         Crea un WeightedRandomSampler per bilanciare le classi nel set di training.
         Questo metodo implementa l'oversampling per le classi minoritarie.
@@ -74,33 +115,7 @@ class DataLoaderManager:
         samples_weight = class_weights[targets]
         samples_weight = torch.from_numpy(samples_weight).double()
 
-        self.logger.debug("WeightedRandomSampler creato per bilanciare le classi nel training.")
+        self.logger.debug(
+            "WeightedRandomSampler creato per bilanciare le classi nel training."
+        )
         return WeightedRandomSampler(samples_weight, len(samples_weight))
-
-    def load_train_val(self):
-        """Crea solo train_loader e val_loader"""
-        train_dataset, val_dataset, _ = self._prepare_datasets()
-        train_sampler = self._create_train_sampler(train_dataset)
-        batch_size = self.config.hyper_parameters.batch_size
-        self.train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                                       sampler=train_sampler, num_workers=4)
-        self.val_loader = DataLoader(val_dataset, batch_size=batch_size,
-                                     shuffle=False, num_workers=4)
-        
-        if len(self.train_loader.dataset) == 0 or len(self.val_loader.dataset) == 0:
-            self.logger.error("Train o validation dataset vuoto!")
-            sys.exit(1)
-
-        self.logger.debug("Train e Val DataLoader creati con successo.")
-
-    def load_test_only(self):
-        """Crea test_loader e lo salva in self.test_loader"""
-        _, _, test_dataset = self._prepare_datasets()
-        batch_size = self.config.hyper_parameters.batch_size
-        self.test_loader = DataLoader(test_dataset, batch_size=batch_size,
-                                    shuffle=False, num_workers=4)
-
-        if len(self.test_loader.dataset) == 0:
-            self.logger.warning("Test dataset vuoto!")
-        else:
-            self.logger.debug("Test DataLoader creato con successo.")
