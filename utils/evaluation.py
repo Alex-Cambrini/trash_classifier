@@ -21,7 +21,6 @@ class EvaluationUtils:
         loss = self.metrics.compute_loss(loader, self.criterion)
         accuracy = self.metrics.compute_accuracy(preds_labels)
         per_class_acc = self.metrics.compute_per_class_accuracy(preds_labels)
-
         return {
             "loss": loss,
             "accuracy": accuracy,
@@ -42,7 +41,7 @@ class EvaluationUtils:
         precision, recall, f1 = self.metrics.compute_precision_recall_f1(preds_labels)
         cm = self.metrics.compute_confusion_matrix_metric(preds_labels)
 
-        all_preds, all_labels = self.metrics._get_all_preds_labels(loader)
+        all_preds, all_labels = preds_labels
 
 
         return {
