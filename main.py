@@ -1,8 +1,9 @@
 import os
-import numexpr
-from pathlib import Path
 import sys
 import logging
+import numexpr
+from typing import Any, Tuple
+from pathlib import Path
 from utils.logging_utils import LoggerUtils
 from tester import Tester
 from utils.config_loader import ConfigLoader
@@ -16,6 +17,7 @@ from utils.run_info import decide_run_name
 
 
 def main():
+    """Main script: gestisce configurazione, logging, training e test."""
     numexpr.set_num_threads(16)
 
     # --- Logger temporaneo per il caricamento config ---
@@ -72,14 +74,16 @@ def main():
         data_manager.load_train_val()
         logger_utils.class_names = data_manager.classes
 
-        trainer, model, criterion, device = init_trainer(
+        trainer, model, criterion, device = _init_trainer(
             config, data_manager, run_name, logger, writer, logger_utils
         )
 
         if dataset_analysis:
-            analyze_dataset(min_samples_per_class, dataset_folder, logger)
+            _analyze_dataset(min_samples_per_class, dataset_folder, logger)
         else:
-            logger.info(f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}")
+            logger.info(
+                f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}"
+            )
 
         logger.info(f"Numero di epoche: {epochs_number}")
         trainer.train()
@@ -96,15 +100,16 @@ def main():
 
         data_manager.load_train_val()
         logger_utils.class_names = data_manager.classes
-        trainer, _, _, _ = init_trainer(
+        trainer, _, _, _ = _init_trainer(
             config, data_manager, run_name, logger, writer, logger_utils
         )
 
         if dataset_analysis:
-            analyze_dataset(min_samples_per_class, dataset_folder, logger)
+            _analyze_dataset(min_samples_per_class, dataset_folder, logger)
         else:
-            logger.info(f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}")
-
+            logger.info(
+                f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}"
+            )
 
         logger.info(f"Numero di epoche: {epochs_number}")
         trainer.train()
@@ -126,14 +131,18 @@ def main():
     else:
         logger.warning("Nessuna azione selezionata in config.parameters")
 
-
-def analyze_dataset(min_samples_per_class, dataset_folder, logger):
+def _analyze_dataset(
+    min_samples_per_class: int, dataset_folder: str, logger: logging.Logger
+):
+    """Analizza il dataset."""
     analyzer = DatasetAnalyzer(dataset_folder, logger)
     analyzer.analyze_and_report(min_samples_per_class)
     logger.info("Analisi dataset completata.")
 
-
-def init_trainer(config, data_manager, run_name, logger, writer, logger_utils):
+def _init_trainer(
+    config, data_manager, run_name: str, logger, writer, logger_utils
+) -> Tuple[Trainer, Any, Any, Any]:
+    """Inizializza Trainer e modello."""
     model, criterion, device = create_model(config, len(data_manager.classes), logger)
     trainer = Trainer(
         config,
