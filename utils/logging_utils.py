@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 
 
 class LoggerUtils:
+    """Utility per logging su terminale e TensorBoard."""
     def __init__(
         self,
         logger: logging.Logger,
@@ -29,6 +30,8 @@ class LoggerUtils:
             return val.detach().cpu().numpy()
         if isinstance(val, list):
             return np.array(val)
+        if isinstance(val, np.ndarray):
+            return val  # Se è già un array NumPy, non fare nulla
         return np.array([val])
 
     def log_test_final(
@@ -42,7 +45,7 @@ class LoggerUtils:
         )
 
         # --- HParams ---
-        hparam_metrics = {
+        hparam_metrics: Dict[str, float] = {
             "hparam/loss": metrics["loss"],
             "hparam/accuracy": metrics["accuracy"],
             "hparam/precision": (
@@ -82,31 +85,21 @@ class LoggerUtils:
 
             # Log dettagli per classe solo in DEBUG
             for metric_name in ["per_class_accuracy", "precision", "recall", "f1"]:
-                values = self._to_numpy(metrics.get(metric_name))
-                if values is not None and len(values) > 0:
-                    mean_val = np.mean(values)
+                val = self._to_numpy(metrics.get(metric_name))
+                if val is not None and val.size > 0:
+                    val = val.flatten()
+                    mean_val = np.mean(val)
                     self.logger.debug(
                         f"{split.capitalize()} {metric_name} (mean): {mean_val:.4f}"
                     )
                     self.logger.debug(
-                        f"{split.capitalize()} {metric_name} (per class): {values}"
+                        f"{split.capitalize()} {metric_name} (per class): {val}"
                     )
 
     def log_tensorboard(
         self, epoch: int, metrics_dict: Dict[str, Dict[str, Any]]
     ) -> None:
         """Log su TensorBoard per tutte le metriche e distribuzioni."""
-
-        # Debug: stampa tutto il metrics_dict e gli split disponibili
-        print(f"[DEBUG] log_tensorboard | epoch: {epoch}")
-        for split, metrics in metrics_dict.items():
-            print(f"[DEBUG] Split: {split}")
-            if metrics is None:
-                print("    [DEBUG] metrics è None")
-            else:
-                keys = list(metrics.keys())
-                print(f"    [DEBUG] keys disponibili in metrics: {keys}")
-
         self.logger.debug(f"Logging metrics for epoch {epoch}: {metrics_dict.keys()}")
 
         for split, metrics in metrics_dict.items():
@@ -126,7 +119,7 @@ class LoggerUtils:
             )
 
     def _log_metrics(self, epoch: int, metrics: Dict[str, Any], split: str) -> None:
-        """Logga metriche scalari e per classe su TensorBoard per lo split specificato."""
+        """Log scalari e metriche per classe su TensorBoard."""
         # Logga le metriche scalari singolarmente (loss, accuracy)
         for metric_name in ["loss", "accuracy"]:
             val = metrics.get(metric_name)
@@ -136,12 +129,14 @@ class LoggerUtils:
         # Logga le metriche per classe su un unico grafico
         for metric_name in ["per_class_accuracy", "precision", "recall", "f1"]:
             val = metrics.get(metric_name)
+            print("debug val metric")
+            print(val)
             if val is not None:
                 val = self._to_numpy(val)
                 if isinstance(val, np.ndarray) and val.ndim > 0:
-                    class_metrics = {
-                        self._class_name(i): float(v) for i, v in enumerate(val)
-                    }
+                    class_metrics = {}
+                    for i, v in enumerate(val):
+                        class_metrics[self._class_name(i)] = float(v)
                     self.writer.add_scalars(
                         f"{metric_name}/{split}", class_metrics, epoch
                     )
@@ -231,10 +226,13 @@ class LoggerUtils:
         self,
         epoch: int,
         preds: Optional[Tensor],
-        split: str = "train",
+        split: str,
         num_classes: Optional[int] = None,
     ) -> None:
         """Logga la distribuzione delle predizioni per split su TensorBoard."""
+        if preds is None:
+            return
+
         preds = preds.to(torch.long).cpu()
         n_classes = num_classes or int(preds.max().item()) + 1
         bincount = torch.bincount(preds, minlength=n_classes)
@@ -251,6 +249,7 @@ class LoggerUtils:
             self._class_name(i): float(v) / total for i, v in enumerate(bincount)
         }
         self.writer.add_scalars(f"pred_distribution/{split}/freq", freq_metrics, epoch)
+
 
     def _class_name(self, i: int) -> str:
         """Restituisce il nome della classe se disponibile, altrimenti 'class_i'."""
