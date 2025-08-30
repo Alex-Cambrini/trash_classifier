@@ -22,7 +22,4 @@ def decide_run_name(config, temp_logger) -> str:
             sys.exit(1)
     else:
         run_name = f"{time.strftime('%Y%m%d_%H%M%S')}_{network_type}"
-
-
     return run_name
-
