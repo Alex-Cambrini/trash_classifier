@@ -10,7 +10,7 @@ from utils.metrics import Metrics
 from utils.model_utils import get_config_params, verify_checkpoint_params
 
 class Tester(EvaluationUtils):
-
+    """Classe per eseguire il testing di un modello PyTorch sul test set."""
     def __init__(self, config, data_manager, logger: logging.Logger, writer: SummaryWriter, logger_utils: LoggerUtils, model: nn.Module, criterion: nn.Module, device: torch.device):
         self.data_manager = data_manager
         self.config = config
@@ -21,13 +21,13 @@ class Tester(EvaluationUtils):
         self.criterion = criterion
         self.device = device
         self.num_classes = len(data_manager.classes)
-        # Inizializzazione della classe metrics
+
+        # Inizializzazione della classe Metrics e EvaluationUtils
         self.metrics = Metrics(model=self.model, device=self.device, num_classes=self.num_classes)
         self.evaluation_utils = EvaluationUtils(model=self.model, criterion=self.criterion, device=self.device, metrics=self.metrics)
                 
-        # parametri
+        # Parametri
         self.model_load_path = config.parameters.model_load_path
-
 
     def test_model(self, reload_checkpoint: bool, epoch: int | None = None) -> dict[str, Any] | None:
         """
@@ -50,10 +50,9 @@ class Tester(EvaluationUtils):
             verify_checkpoint_params(self.meta, config_params, self.logger)
         else:
             config_params = get_config_params(self.config)
-
                 
         self.logger.info("Inizio valutazione completa")    
-        test_metrics = self.evaluation_utils._evaluate_full(self.data_manager.test_loader)
+        test_metrics = self.evaluation_utils.evaluate_full(self.data_manager.test_loader)
         self.logger.info("Fine valutazione completa")    
         # scrive su writer esistente (dal train o appena creato)
         metrics_dict = {"test": test_metrics}
