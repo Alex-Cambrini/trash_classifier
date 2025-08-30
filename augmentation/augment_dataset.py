@@ -17,6 +17,50 @@ class AugmentationRunner:
         self.logger = logger
         self.run_name = run_name
 
+    def run(self) -> None:
+        """
+        Esegue l'intero processo di augmentation e analisi del dataset.
+        """
+        input_dir = self.config.input_dir
+        output_dir = self.config.output_dir
+        analysis_dir = self.config.analisys_dir
+        show_chart = self.config.show_chart
+        valid_extensions = self.config.valid_extensions
+        overwrite = self.config.overwrite
+
+        min_aug = self.config.min_augmented_per_image
+        max_aug = self.config.max_augmented_per_image
+        copy_original = self.config.copy_original
+
+        self.logger.debug(f"Show chart: {show_chart}")
+
+        _, class_names = self._scan_images(input_dir, valid_extensions)
+
+        self._prepare_output_dir(
+            output_dir,
+            class_names,
+            overwrite,
+            [os.path.join(analysis_dir, "before"), os.path.join(analysis_dir, "after")],
+        )
+
+        self._analyze_dataset(
+            input_dir,
+            valid_extensions,
+            show_chart,
+            output_dir=os.path.join(analysis_dir, "before"),
+        )
+
+        self._create_augmented_dataset(
+            input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions
+        )
+
+        self._analyze_dataset(
+            output_dir,
+            valid_extensions,
+            show_chart,
+            output_dir=os.path.join(analysis_dir, "after"),
+        )
+
     def _ensure_dirs(self, dirs: List[str]) -> None:
         """Crea le cartelle se non esistono."""
         for d in dirs:
@@ -165,47 +209,3 @@ class AugmentationRunner:
         if show_chart:
             plt.show()
         plt.close()
-
-    def run(self) -> None:
-        """
-        Esegue l'intero processo di augmentation e analisi del dataset.
-        """
-        input_dir = self.config.input_dir
-        output_dir = self.config.output_dir
-        analysis_dir = self.config.analisys_dir
-        show_chart = self.config.show_chart
-        valid_extensions = self.config.valid_extensions
-        overwrite = self.config.overwrite
-
-        min_aug = self.config.min_augmented_per_image
-        max_aug = self.config.max_augmented_per_image
-        copy_original = self.config.copy_original
-
-        self.logger.debug(f"Show chart: {show_chart}")
-
-        _, class_names = self._scan_images(input_dir, valid_extensions)
-
-        self._prepare_output_dir(
-            output_dir,
-            class_names,
-            overwrite,
-            [os.path.join(analysis_dir, "before"), os.path.join(analysis_dir, "after")],
-        )
-
-        self._analyze_dataset(
-            input_dir,
-            valid_extensions,
-            show_chart,
-            output_dir=os.path.join(analysis_dir, "before"),
-        )
-
-        self._create_augmented_dataset(
-            input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions
-        )
-
-        self._analyze_dataset(
-            output_dir,
-            valid_extensions,
-            show_chart,
-            output_dir=os.path.join(analysis_dir, "after"),
-        )
