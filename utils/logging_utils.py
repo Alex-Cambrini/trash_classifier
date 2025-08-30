@@ -1,131 +1,259 @@
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
+from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim import Optimizer
+from typing import Any, Dict, Optional
 
 
 class LoggerUtils:
-    def __init__(self, logger, writer: SummaryWriter, optimizer=None):
+    def __init__(
+        self,
+        logger: logging.Logger,
+        writer: SummaryWriter,
+        optimizer: Optional[Optimizer] = None,
+    ) -> None:
         self.logger = logger
         self.writer = writer
         self.optimizer = optimizer
+        self.class_names = None
 
-    def log_test_final(self, epoch, metrics, config_params):
-        """
-        Log finale del test:
-        - Terminale
-        - HParams (config + metriche principali)
-        """
+    def _to_numpy(self, val) -> Optional[np.ndarray]:
+        """Converte, se presente, tensore, lista o singolo valore in np.ndarray."""
+        if val is None:
+            return None
+        if isinstance(val, torch.Tensor):
+            return val.detach().cpu().numpy()
+        if isinstance(val, list):
+            return np.array(val)
+        return np.array([val])
 
-        self.logger.info(f"Contenuto di metrics: {metrics}")
+    def log_test_final(
+        self, epoch: int, metrics: Dict[str, Any], config_params: Dict[str, Any]
+    ) -> None:
+        """Log finale del test su terminale e TensorBoard HParams."""
         # --- Terminale ---
         self.logger.info(
             f"Test finale | Epoch {epoch} | "
             f"Loss: {metrics['loss']:.4f}, Accuracy: {metrics['accuracy']:.4f}"
         )
 
-        # --- HParams: salva configurazione + metriche principali ---
+        # --- HParams ---
         hparam_metrics = {
-            "loss": float(metrics['loss']),
-            "accuracy": float(metrics['accuracy'])
+            "hparam/loss": metrics["loss"],
+            "hparam/accuracy": metrics["accuracy"],
+            "hparam/precision": (
+                float(metrics["precision"].mean().item())
+                if hasattr(metrics["precision"], "mean")
+                else metrics.get("precision")
+            ),
+            "hparam/recall": (
+                float(metrics["recall"].mean().item())
+                if hasattr(metrics["recall"], "mean")
+                else metrics.get("recall")
+            ),
+            "hparam/f1": (
+                float(metrics["f1"].mean().item())
+                if hasattr(metrics["f1"], "mean")
+                else metrics.get("f1")
+            ),
         }
 
         self.writer.add_hparams(config_params, hparam_metrics)
 
-
-    # --- Log principale per terminale ---
-    def log_terminal(self, epoch, metrics_dict):
+    def log_terminal(
+        self, epoch: int, metrics_dict: Dict[str, Optional[Dict[str, Any]]]
+    ) -> None:
+        """Log principale per terminale."""
         self.logger.info(f"Epoch {epoch} Results:")
         for split, metrics in (metrics_dict or {}).items():
             if metrics is None:
                 continue
 
             # Log principale compatto
-            loss = metrics.get('loss')
-            acc = metrics.get('accuracy')
+            loss = metrics.get("loss")
+            acc = metrics.get("accuracy")
             loss_str = f"Loss: {loss:.4f}" if loss is not None else "Loss: N/D"
             acc_str = f"Acc: {acc:.4f}" if acc is not None else "Acc: N/D"
             self.logger.info(f"{split.capitalize()} | {loss_str}, {acc_str}")
 
             # Log dettagli per classe solo in DEBUG
-            for metric_name in ['per_class_accuracy', 'precision', 'recall', 'f1']:
-                values = metrics.get(metric_name)
-                if values is not None:
+            for metric_name in ["per_class_accuracy", "precision", "recall", "f1"]:
+                values = self._to_numpy(metrics.get(metric_name))
+                if values is not None and len(values) > 0:
                     mean_val = np.mean(values)
-                    self.logger.debug(f"{split.capitalize()} {metric_name} (mean): {mean_val:.4f}")
-                    self.logger.debug(f"{split.capitalize()} {metric_name} (per class): {values}")
+                    self.logger.debug(
+                        f"{split.capitalize()} {metric_name} (mean): {mean_val:.4f}"
+                    )
+                    self.logger.debug(
+                        f"{split.capitalize()} {metric_name} (per class): {values}"
+                    )
 
-    # --- Log per TensorBoard ---
-    def log_tensorboard(self, epoch, metrics_dict, embeddings=None, labels=None):
+    def log_tensorboard(
+        self, epoch: int, metrics_dict: Dict[str, Dict[str, Any]]
+    ) -> None:
+        """Log su TensorBoard per tutte le metriche e distribuzioni."""
+
+        # Debug: stampa tutto il metrics_dict e gli split disponibili
+        print(f"[DEBUG] log_tensorboard | epoch: {epoch}")
         for split, metrics in metrics_dict.items():
-                self._log_metrics(epoch, metrics, split)
-                self._log_confusion_matrix(epoch, metrics, split)
-                if split == "train":  # log learning rate solo per train
-                    self._log_learning_rate(epoch)
-                self._log_class_distribution(epoch, metrics.get('all_labels'), split=split)
+            print(f"[DEBUG] Split: {split}")
+            if metrics is None:
+                print("    [DEBUG] metrics è None")
+            else:
+                keys = list(metrics.keys())
+                print(f"    [DEBUG] keys disponibili in metrics: {keys}")
 
-        if embeddings is not None and labels is not None:
-            self.writer.add_embedding(embeddings, metadata=labels, global_step=epoch)
+        self.logger.debug(f"Logging metrics for epoch {epoch}: {metrics_dict.keys()}")
 
-    # --- Helper: metriche generali + per classe ---
-    def _log_metrics(self, epoch, metrics, split):
-        """
-        Log su TensorBoard per un set di metriche.
-        Lo split può essere 'train', 'val' o 'test_final'.
-        """
-        for metric_name in ['loss', 'accuracy', 'precision', 'recall', 'f1', 'per_class_accuracy']:
-            if metric_name not in metrics:
-                continue
-            val = metrics[metric_name]
-            mean_val = np.mean(val) if isinstance(val, (list, np.ndarray)) else val
-            self.writer.add_scalar(f"{metric_name}/{split}", mean_val, epoch)
-            if isinstance(val, (list, np.ndarray)):
-                for i, v in enumerate(val):
-                    self.writer.add_scalar(f"{metric_name}/{split}/class_{i}", v, epoch)
+        for split, metrics in metrics_dict.items():
+            self._log_metrics(epoch, metrics, split)
+            self._log_confusion_matrix(epoch, metrics, split)
+            if split == "train":  # log learning rate solo per train
+                self._log_learning_rate(epoch)
+            self._log_pred_distribution(epoch, metrics.get("all_preds"), split=split)
 
+        # Log della distribuzione delle classi una sola volta, con tutti i dati disponibili
+        train_labels = metrics_dict.get("train", {}).get("train_labels")
+        val_labels = metrics_dict.get("val", {}).get("val_labels")
 
-    # --- Helper: confusion matrix ---
-    def _log_confusion_matrix(self, epoch, metrics, split):
-        if metrics is None or 'confusion_matrix' not in metrics:
+        if train_labels is not None or val_labels is not None:
+            self._log_class_distribution(
+                epoch, train_labels=train_labels, val_labels=val_labels
+            )
+
+    def _log_metrics(self, epoch: int, metrics: Dict[str, Any], split: str) -> None:
+        """Logga metriche scalari e per classe su TensorBoard per lo split specificato."""
+        # Logga le metriche scalari singolarmente (loss, accuracy)
+        for metric_name in ["loss", "accuracy"]:
+            val = metrics.get(metric_name)
+            if val is not None:
+                self.writer.add_scalar(f"{metric_name}/{split}", float(val), epoch)
+
+        # Logga le metriche per classe su un unico grafico
+        for metric_name in ["per_class_accuracy", "precision", "recall", "f1"]:
+            val = metrics.get(metric_name)
+            if val is not None:
+                val = self._to_numpy(val)
+                if isinstance(val, np.ndarray) and val.ndim > 0:
+                    class_metrics = {
+                        self._class_name(i): float(v) for i, v in enumerate(val)
+                    }
+                    self.writer.add_scalars(
+                        f"{metric_name}/{split}", class_metrics, epoch
+                    )
+
+    def _log_confusion_matrix(
+        self, epoch: int, metrics: Dict[str, Any], split: str
+    ) -> None:
+        """Logga la confusion matrix su TensorBoard per lo split specificato."""
+        if metrics is None or "confusion_matrix" not in metrics:
             return
-        cm = metrics['confusion_matrix']
+        cm = metrics["confusion_matrix"]
         fig, ax = plt.subplots(figsize=(6, 6))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-        ax.set_xlabel('Predicted')
-        ax.set_ylabel('True')
-        ax.set_title(f'{split.capitalize()} Confusion Matrix')
+        class_names = [self._class_name(i) for i in range(cm.shape[0])]
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            ax=ax,
+            xticklabels=class_names,
+            yticklabels=class_names,
+        )
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("True")
+        ax.set_title(f"{split.capitalize()} Confusion Matrix")
         self.writer.add_figure(f"ConfusionMatrix_Epoch_{epoch}/{split}", fig, epoch)
         plt.close(fig)
 
-
-    # --- Helper: learning rate ---
-    def _log_learning_rate(self, epoch):
+    def _log_learning_rate(self, epoch: int) -> None:
+        """Logga il learning rate corrente su TensorBoard."""
         if self.optimizer is None:
             return
-        current_lr = self.optimizer.param_groups[0]['lr']
+        current_lr = self.optimizer.param_groups[0]["lr"]
         self.writer.add_scalar("Learning Rate", current_lr, epoch)
-        
-    def _log_class_distribution(self, epoch, labels, split="train"):
-        if labels is None:
+
+    def _log_class_distribution(
+        self,
+        epoch: int,
+        train_labels: Optional[Tensor],
+        val_labels: Optional[Tensor] = None,
+        num_classes: Optional[int] = None,
+    ):
+        """Logga la distribuzione delle classi su TensorBoard per train e val."""
+        if train_labels is None and val_labels is None:
             return
-        bincount = torch.bincount(labels)
-        for i, count in enumerate(bincount):
-            self.writer.add_scalar(f"{split}/class_distribution/class_{i}", count.item(), epoch)
 
+        # Determina numero classi
+        n_classes = num_classes
+        if n_classes is None:
+            candidates = []
+            if train_labels is not None:
+                candidates.append(int(train_labels.max().item()) + 1)
+            if val_labels is not None:
+                candidates.append(int(val_labels.max().item()) + 1)
+            n_classes = max(candidates)
 
-    # --- Helper: embeddings ---
-    def _log_embeddings(self, epoch, features, labels=None, images=None, tag="embeddings"):
-        """
-        Log embedding su TensorBoard.
-        features: torch.Tensor [N, D]
-        labels: lista o array [N] (opzionale, usato come metadata)
-        images: torch.Tensor [N, C, H, W] (opzionale, mostrato come thumbnail)
-        """
-        if features is None:
-            return
-        features = features.detach().cpu()
-        metadata = labels if labels is not None else None
-        label_img = images.detach().cpu() if images is not None else None
+        train_counts = (
+            torch.bincount(train_labels.to(torch.long), minlength=n_classes)
+            if train_labels is not None
+            else torch.zeros(n_classes)
+        )
+        val_counts = (
+            torch.bincount(val_labels.to(torch.long), minlength=n_classes)
+            if val_labels is not None
+            else torch.zeros(n_classes)
+        )
 
-        self.writer.add_embedding(features, metadata=metadata, label_img=label_img, global_step=epoch, tag=tag)
+        # Crea il grafico
+        fig, ax = plt.subplots(figsize=(8, 5))
+        indices = np.arange(n_classes)
+        width = 0.35
+
+        ax.bar(indices - width / 2, train_counts.numpy(), width, label="Train")
+        ax.bar(indices + width / 2, val_counts.numpy(), width, label="Val")
+
+        ax.set_xlabel("Classi")
+        ax.set_ylabel("Count")
+        ax.set_title(f"Distribuzione classi - Epoch {epoch}")
+        ax.set_xticks(indices)
+        ax.set_xticklabels([self._class_name(i) for i in range(n_classes)])
+        ax.legend()
+
+        self.writer.add_figure(f"class_distribution/epoch_{epoch}", fig, epoch)
+        plt.close(fig)
+
+    def _log_pred_distribution(
+        self,
+        epoch: int,
+        preds: Optional[Tensor],
+        split: str = "train",
+        num_classes: Optional[int] = None,
+    ) -> None:
+        """Logga la distribuzione delle predizioni per split su TensorBoard."""
+        preds = preds.to(torch.long).cpu()
+        n_classes = num_classes or int(preds.max().item()) + 1
+        bincount = torch.bincount(preds, minlength=n_classes)
+        total = bincount.sum().item()
+
+        # Raggruppa tutte le classi in un unico grafico per Count
+        count_metrics = {self._class_name(i): int(v) for i, v in enumerate(bincount)}
+        self.writer.add_scalars(
+            f"pred_distribution/{split}/count", count_metrics, epoch
+        )
+
+        # Raggruppa tutte le classi in un unico grafico per Freq
+        freq_metrics = {
+            self._class_name(i): float(v) / total for i, v in enumerate(bincount)
+        }
+        self.writer.add_scalars(f"pred_distribution/{split}/freq", freq_metrics, epoch)
+
+    def _class_name(self, i: int) -> str:
+        """Restituisce il nome della classe se disponibile, altrimenti 'class_i'."""
+        if self.class_names is not None and i < len(self.class_names):
+            return self.class_names[i]
+        return f"class_{i}"
