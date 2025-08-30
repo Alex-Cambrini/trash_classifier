@@ -21,19 +21,7 @@ class LoggerUtils:
         self.writer = writer
         self.optimizer = optimizer
         self.class_names = None
-
-    def _to_numpy(self, val) -> Optional[np.ndarray]:
-        """Converte, se presente, tensore, lista o singolo valore in np.ndarray."""
-        if val is None:
-            return None
-        if isinstance(val, torch.Tensor):
-            return val.detach().cpu().numpy()
-        if isinstance(val, list):
-            return np.array(val)
-        if isinstance(val, np.ndarray):
-            return val  # Se è già un array NumPy, non fare nulla
-        return np.array([val])
-
+   
     def log_test_final(
         self, epoch: int, metrics: Dict[str, Any], config_params: Dict[str, Any]
     ) -> None:
@@ -176,7 +164,7 @@ class LoggerUtils:
         train_labels: Optional[Tensor],
         val_labels: Optional[Tensor] = None,
         num_classes: Optional[int] = None,
-    ):
+    ) -> None :
         """Logga la distribuzione delle classi su TensorBoard per train e val."""
         if train_labels is None and val_labels is None:
             return
@@ -248,9 +236,20 @@ class LoggerUtils:
         }
         self.writer.add_scalars(f"pred_distribution/{split}/freq", freq_metrics, epoch)
 
-
     def _class_name(self, i: int) -> str:
         """Restituisce il nome della classe se disponibile, altrimenti 'class_i'."""
         if self.class_names is not None and i < len(self.class_names):
             return self.class_names[i]
         return f"class_{i}"
+    
+    def _to_numpy(self, val) -> Optional[np.ndarray]:
+            """Converte, se presente, tensore, lista o singolo valore in np.ndarray."""
+            if val is None:
+                return None
+            if isinstance(val, torch.Tensor):
+                return val.detach().cpu().numpy()
+            if isinstance(val, list):
+                return np.array(val)
+            if isinstance(val, np.ndarray):
+                return val  # Se è già un array NumPy, non fare nulla
+            return np.array([val])
