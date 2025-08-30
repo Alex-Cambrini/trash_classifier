@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 
 class EvaluationUtils:
+    """Utility class per la valutazione di modelli PyTorch."""
     def __init__(
         self,
         model: torch.nn.Module,
@@ -15,7 +16,7 @@ class EvaluationUtils:
         self.device = device
         self.metrics = metrics
 
-    def _evaluate_light(self, loader: DataLoader) -> Dict[str, Any]:
+    def evaluate_light(self, loader: DataLoader) -> Dict[str, Any]:
         """Calcola solo le metriche necessarie per early stopping o per raggiungere l'accuratezza target."""
         preds_labels = self.metrics._get_all_preds_labels(loader)
         loss = self.metrics.compute_loss(loader, self.criterion)
@@ -27,7 +28,7 @@ class EvaluationUtils:
             "per_class_accuracy": per_class_acc
         }
 
-    def _evaluate_full(self, loader: DataLoader) -> Dict[str, Any]:
+    def evaluate_full(self, loader: DataLoader) -> Dict[str, Any]:
         """Calcola tutte le metriche, comprese quelle più onerose dal punto di vista computazionale."""
         # Calcolo predizioni e label
         preds_labels = self.metrics._get_all_preds_labels(loader)
