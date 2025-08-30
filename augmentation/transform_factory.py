@@ -1,6 +1,8 @@
 from torchvision import transforms
+from torchvision.transforms import Compose
 
-def get_transforms():
+
+def get_transforms() -> Compose:
     """
     Restituisce la pipeline di trasformazioni per l'augmentation.
     """

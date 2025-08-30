@@ -9,7 +9,8 @@ import logging
 from utils.logger import get_logger
 from datetime import datetime
 
-def run_augmentation():
+def run_augmentation() -> None:
+    """Esegue l'augmentazione del dataset basata sulla configurazione JSON."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_name=f"augmentation_{timestamp}"    
     logger = get_logger(run_name=run_name, log_dir="logs/augmentation")
