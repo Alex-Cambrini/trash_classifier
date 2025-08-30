@@ -1,5 +1,7 @@
+import logging
 import os
 import sys
+from typing import Dict
 
 class DatasetAnalyzer:
     """
@@ -7,21 +9,18 @@ class DatasetAnalyzer:
     Mantiene controllo minimo campioni per classe e log dello sbilanciamento.
     Compatibile con oversampling: analisi fatta solo sul dataset originale.
     """
-    def __init__(self, dataset_path: str, logger):
+    def __init__(self, dataset_path: str, logger: logging.Logger):
         self.dataset_path = dataset_path
         self.class_counts = {}
         self.logger = logger
 
-    def analyze_and_report(self, min_samples):
-        """
-        Funzione pubblica unica da chiamare nel main.
-        Esegue l'analisi del dataset e controlla min_samples/log ratio.
-        """
+    def analyze_and_report(self, min_samples: int) -> Dict[str, int]:
+        """Esegue l'analisi del dataset e controlla min_samples/log ratio."""
         self._analyze()
         self._report(min_samples)
         return self.class_counts
 
-    def _analyze(self):
+    def _analyze(self) -> None:
         """Conta il numero di campioni per ciascuna classe."""
         if not os.path.exists(self.dataset_path):
             self.logger.error(f"Path non trovato: {self.dataset_path}")
@@ -39,7 +38,7 @@ class DatasetAnalyzer:
 
         self.logger.debug(f"Dataset analizzato: {len(self.class_counts)} classi trovate.")
 
-    def _report(self, min_samples):
+    def _report(self, min_samples: int) -> None:
         """
         Controlla che ogni classe abbia almeno min_samples campioni
         e logga informazioni sullo sbilanciamento del dataset.
