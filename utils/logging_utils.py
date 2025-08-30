@@ -129,8 +129,6 @@ class LoggerUtils:
         # Logga le metriche per classe su un unico grafico
         for metric_name in ["per_class_accuracy", "precision", "recall", "f1"]:
             val = metrics.get(metric_name)
-            print("debug val metric")
-            print(val)
             if val is not None:
                 val = self._to_numpy(val)
                 if isinstance(val, np.ndarray) and val.ndim > 0:
