@@ -167,11 +167,10 @@ class Trainer(EvaluationUtils):
                 # Salvo modello se è il migliore
                 if self.best_val_loss == val_metrics["loss"]:
                     self._save_model_state(
-                        "model_best.pth",
-                        self.current_epoch,
-                        self.best_model_state,
-                        train_metrics,
-                        val_metrics,
+                        filename="model_best.pth",
+                        epoch=self.current_epoch,
+                        train_metrics=train_metrics,
+                        val_metrics=val_metrics,
                     )
 
                 # Controllo target accuracy solo quando è il momento
@@ -195,8 +194,7 @@ class Trainer(EvaluationUtils):
             "model_final.pth",
             self.current_epoch,
             train_metrics=train_metrics,
-            val_metrics=val_metrics,
-            model_state=None,
+            val_metrics=val_metrics
         )
         self.logger.info("Fine training")
 
@@ -256,11 +254,6 @@ class Trainer(EvaluationUtils):
             self.model_save_dir, f"{self.run_name}_{filename}_epoch{epoch}.pth"
         )
 
-        # Stato del modello
-        state_to_save = (
-            model_state if model_state is not None else self.model.state_dict()
-        )
-
         # Parametri principali da salvare
         meta = {
             "run_name": self.run_name,
@@ -280,7 +273,7 @@ class Trainer(EvaluationUtils):
 
         torch.save(
             {
-                "model_state_dict": state_to_save,
+                "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "scheduler_state_dict": self.scheduler.state_dict(),
                 "metrics": {"train": train_metrics, "val": val_metrics},
