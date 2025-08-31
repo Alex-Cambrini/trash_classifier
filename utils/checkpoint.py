@@ -11,7 +11,7 @@ def read_checkpoint(path, logger: logging.Logger):
         return None
 
     try:
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, weights_only=False)
         logger.info("Checkpoint caricato con successo")
 
         return {
