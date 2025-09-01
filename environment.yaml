@@ -1,0 +1,22 @@
+name: trash_classifier
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - pandas
+  - numexpr
+  - pip:
+      - torch==2.7.1
+      - torchvision==0.22.1
+      - torchaudio==2.7.1
+      - Pillow
+      - tqdm
+      - colorama
+      - jsonschema
+      - tensorboard==2.20.0
