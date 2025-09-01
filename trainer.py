@@ -71,7 +71,7 @@ class Trainer(EvaluationUtils):
         self.current_epoch = 0
         self.global_step = None
 
-    def train_one_epoch(self) -> tuple[Dict[str, Any]]:
+    def train_one_epoch(self) -> Dict[str, Any]:
         """Esegue il training di un'epoca e ritorna metriche"""
         self.model.train()
         running_loss = 0.0
