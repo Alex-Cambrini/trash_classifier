@@ -26,6 +26,8 @@ def verify_checkpoint_params(meta: Dict[str, Any], config_params: Dict[str, Any]
     if mismatches:
         logger.error(f"Discrepanze tra checkpoint e configurazione corrente: {mismatches}")
         sys.exit(1)
+    else:
+        logger.info("Verifica checkpoint eseguita correttamente: tutti i parametri corrispondono.")
 
 def get_config_params(config: Any) -> Dict[str, Any]:
     """
