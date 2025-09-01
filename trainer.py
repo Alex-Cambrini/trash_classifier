@@ -69,9 +69,10 @@ class Trainer(EvaluationUtils):
         self.early_stop = False
         self.target_accuracy_reached = False
         self.current_epoch = 0
+        self.global_step = None
 
-    def train_one_epoch(self, global_step: int) -> tuple[Dict[str, Any], int]:
-        """Esegue il training di un'epoca e ritorna metriche + global_step aggiornato."""
+    def train_one_epoch(self) -> tuple[Dict[str, Any]]:
+        """Esegue il training di un'epoca e ritorna metriche"""
         self.model.train()
         running_loss = 0.0
         total = 0
@@ -90,8 +91,8 @@ class Trainer(EvaluationUtils):
             loss.backward()
             self.optimizer.step()
 
-            self.writer.add_scalar("Loss/train_step", loss.item(), global_step)
-            global_step += 1
+            self.writer.add_scalar("Loss/train_step", loss.item(), self.global_step)
+            self.global_step += 1
 
             running_loss += loss.item() * inputs.size(0)
             total += labels.size(0)
@@ -120,16 +121,15 @@ class Trainer(EvaluationUtils):
                 self.logger.debug("Aggiornamento Delle Metriche Di Train")
                 train_metrics_full.update(metrics)
                 self.logger.info("Metriche Aggiornate")
-        return train_metrics_full, global_step
+        return train_metrics_full
 
     def train(self):
         """Esegue il training del modello per tutte le epoche configurate."""
         self.logger.info("Inizio training...")
         self.logger.debug(f"Training su {self.device}")
-
+        self.global_step = 0
         self._load_and_resume_training()
         self.logger.debug(f"Network selected: {self.network_type}")
-        global_step = 0
 
         for epoch in range(self.current_epoch, self.epochs):
             if self._should_stop_training():
@@ -139,7 +139,7 @@ class Trainer(EvaluationUtils):
             self.logger.info(f"Inizio epoca {self.current_epoch}/{self.epochs}")
 
             # Training per un'epoca
-            train_metrics, global_step = self.train_one_epoch(global_step)
+            train_metrics = self.train_one_epoch()
 
             # Converti tensori in liste per train_metrics
             train_metrics = self._convert_metrics_to_list(train_metrics)
@@ -269,6 +269,7 @@ class Trainer(EvaluationUtils):
             "loss_eval_every": self.loss_eval_every,
             "patience": self.patience,
             "improvement_rate": self.improvement_rate,
+            "global_step": self.global_step
         }
 
         torch.save(
@@ -299,7 +300,8 @@ class Trainer(EvaluationUtils):
         self.scheduler.load_state_dict(ckpt["scheduler_state_dict"])
         self.meta = ckpt.get("meta")
         self.current_epoch = self.meta["epoch"]
-
+        self.global_step = self.meta.get("global_step", 0)
+        self.logger.debug(f"global step = {self.global_step}")
         config_params = get_config_params(self.config)
         verify_checkpoint_params(self.meta, config_params, self.logger)
         self.logger.info(f"Riprendo training dal checkpoint {self.model_load_path}")
