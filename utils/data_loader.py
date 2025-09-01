@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import numpy as np
 import torch
@@ -24,6 +25,10 @@ class DataLoaderManager:
         self.classes = None
         self.seed = self.config.hyper_parameters.seed
         self.generator = torch.Generator().manual_seed(self.seed)
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
+
 
     def load_train_val(self) -> None:
         """Crea solo train_loader e val_loader"""
