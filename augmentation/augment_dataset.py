@@ -4,6 +4,7 @@ import sys
 from collections import Counter
 from typing import List, Tuple
 from PIL import Image
+import torch
 import tqdm
 import matplotlib.pyplot as plt
 from transform_factory import get_transforms
@@ -16,6 +17,8 @@ class AugmentationRunner:
         self.config = config
         self.logger = logger
         self.run_name = run_name
+        seed = self.config.seed
+        torch.manual_seed(seed)
 
     def run(self) -> None:
         """
