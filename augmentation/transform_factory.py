@@ -7,7 +7,6 @@ def get_transforms() -> Compose:
     Restituisce la pipeline di trasformazioni per l'augmentation.
     """
     return transforms.Compose([
-        transforms.Resize((256, 256)),
         transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.2),
