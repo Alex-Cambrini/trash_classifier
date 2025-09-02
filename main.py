@@ -42,6 +42,7 @@ def main():
     final_test: bool = config.parameters.final_test
     dataset_analysis: bool = config.parameters.analyze_dataset
     load_model: bool = config.parameters.load_model
+    show_analysis_preview: bool = config.parameters.show_analysis_preview
     epochs_number: int = config.hyper_parameters.epochs
     min_samples_per_class: int = config.dataset_parameters.min_samples_per_class
     dataset_folder: str = config.input.dataset_folder
@@ -79,7 +80,7 @@ def main():
         )
 
         if dataset_analysis:
-            _analyze_dataset(min_samples_per_class, dataset_folder, logger)
+            _analyze_dataset(min_samples_per_class, dataset_folder, logger, show_analysis_preview)
         else:
             logger.info(
                 f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}"
@@ -105,7 +106,7 @@ def main():
         )
 
         if dataset_analysis:
-            _analyze_dataset(min_samples_per_class, dataset_folder, logger)
+            _analyze_dataset(min_samples_per_class, dataset_folder, logger, show_analysis_preview)
         else:
             logger.info(
                 f"Analisi dataset saltata. Parametro dataset_analysis={dataset_analysis}"
@@ -132,11 +133,11 @@ def main():
         logger.warning("Nessuna azione selezionata in config.parameters")
 
 def _analyze_dataset(
-    min_samples_per_class: int, dataset_folder: str, logger: logging.Logger
+    min_samples_per_class: int, dataset_folder: str, logger: logging.Logger , show_analysis_preview: bool
 ):
     """Analizza il dataset."""
     analyzer = DatasetAnalyzer(dataset_folder, logger)
-    analyzer.analyze_and_report(min_samples_per_class)
+    analyzer.analyze_and_report(min_samples_per_class, show_analysis_preview)
     logger.info("Analisi dataset completata.")
 
 def _init_trainer(
