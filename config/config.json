@@ -11,34 +11,34 @@
   "parameters": {
     "train": true,
     "final_test": true,
-    "show_preview": true,
+    "analyze_dataset": true,
+    "show_analysis_preview": true,
     "debug": true,
     "load_model": false,
-    "model_load_path": "./saved_models/reload.pth",
-    "analyze_dataset": true
+    "model_load_path": "./saved_models/reload.pth"   
   },
   "hyper_parameters": {
     "batch_size": 16,
-    "weight_decay": 0.005,
-    "learning_rate": 0.0005,
+    "weight_decay": 0.02,
+    "learning_rate": 0.0002,
     "scheduler_patience_in_val_steps": 1,
-    "learning_rate_scheduler_gamma": 0.5,     
+    "learning_rate_scheduler_gamma": 0.3,     
     "momentum": 0.9,
-    "epochs": 20,
+    "epochs": 2,
     "seed": 42
     },
   "train_parameters": {
-    "network_type": "efficientnet_b0",
+    "network_type": "resnet18",
     "train_split": 0.7,
     "val_split": 0.15,
     "test_split": 0.15,
     "accuracy_evaluation_epochs": 1,
-    "accuracy_target": 95
+    "accuracy_target": 99
   },
   "early_stop_parameters": {
-    "start_epoch": 2,
+    "start_epoch": 1,
     "val_loss_every_n_epochs": 2,
-    "patience": 3,
-    "improvement_rate": 0.1
+    "patience": 2,
+    "improvement_rate": 0.05
     }
 }
