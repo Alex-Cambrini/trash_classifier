@@ -13,8 +13,9 @@
     },
     "debug": { "type": "boolean" },
     "overwrite": { "type": "boolean" },
-    "show_chart": { "type": "boolean" }
+    "show_chart": { "type": "boolean" },
+    "seed": { "type": "integer" }
   },
-  "required": ["input_dir", "output_dir","analisys_dir", "min_augmented_per_image", "max_augmented_per_image", "copy_original", "valid_extensions", "debug"],
+  "required": ["input_dir", "output_dir","analisys_dir", "min_augmented_per_image", "max_augmented_per_image", "copy_original", "valid_extensions", "debug", "seed"],
   "additionalProperties": false
 }
