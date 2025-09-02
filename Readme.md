@@ -14,6 +14,15 @@ Attivare l'ambiente:
 ```bash
 conda activate garbage_classification
 ```
+## Estrarre dataset
+
+Il dataset originale è fornito come archivio compresso:
+
+- `data/garbage_classification.rar`
+
+**Istruzioni:**  
+Estrarre il contenuto dell’archivio nella cartella `data/garbage_classification`, in modo che il progetto possa accedere correttamente ai dati durante l’addestramento e i test.
+ 
 ## Comandi principali
 Eseguire l’augmentation:
 ```bash
