@@ -1,7 +1,11 @@
 import logging
 import os
 import sys
+import matplotlib.pyplot as plt
+from PIL import Image
+import random
 from typing import Dict
+
 
 class DatasetAnalyzer:
     """
@@ -14,10 +18,14 @@ class DatasetAnalyzer:
         self.class_counts = {}
         self.logger = logger
 
-    def analyze_and_report(self, min_samples: int) -> Dict[str, int]:
-        """Esegue l'analisi del dataset e controlla min_samples/log ratio."""
+    def analyze_and_report(self, min_samples: int, show_analysis_preview: bool) -> Dict[str, int]:
+        "Analizza il dataset e opzionalmente mostra anteprime delle immagini."
         self._analyze()
         self._report(min_samples)
+        if show_analysis_preview:
+            self._preview_samples()
+        else:
+             self.logger.debug(f"Preview immagini non mostrata (show_analysis_preview={show_analysis_preview}).")
         return self.class_counts
 
     def _analyze(self) -> None:
@@ -36,7 +44,7 @@ class DatasetAnalyzer:
                 ])
                 self.class_counts[class_name] = num_files
 
-        self.logger.debug(f"Dataset analizzato: {len(self.class_counts)} classi trovate.")
+        self.logger.info(f"Dataset analizzato: {len(self.class_counts)} classi trovate.")
 
     def _report(self, min_samples: int) -> None:
         """
@@ -66,3 +74,29 @@ class DatasetAnalyzer:
         else:
             self.logger.error("Dataset troppo sbilanciato, training non consigliato!")
             sys.exit(-1)
+
+    def _preview_samples(self, samples_per_class: int = 5, max_classes: int = 6)  -> None:
+        """Mostra alcune immagini per ciascuna classe, affiancate per riga."""
+        class_names = list(self.class_counts.keys())[:max_classes]
+        num_classes = len(class_names)
+
+        plt.figure(figsize=(samples_per_class * 3, num_classes * 3))
+
+        for row_idx, class_name in enumerate(class_names):
+            class_dir = os.path.join(self.dataset_path, class_name)
+            files = [f for f in os.listdir(class_dir) if os.path.isfile(os.path.join(class_dir, f))]
+            files = random.sample(files, min(samples_per_class, len(files)))
+
+            self.logger.debug(f"Anteprima classe '{class_name}': {files}")
+
+            for col_idx, file in enumerate(files):
+                img_path = os.path.join(class_dir, file)
+                img = Image.open(img_path)
+                plt.subplot(num_classes, samples_per_class, row_idx * samples_per_class + col_idx + 1)
+                plt.imshow(img)
+                plt.axis('off')
+                if col_idx == 0:
+                    plt.ylabel(class_name, rotation=0, labelpad=50, va='center', fontsize=12)
+
+        plt.tight_layout()
+        plt.show()
