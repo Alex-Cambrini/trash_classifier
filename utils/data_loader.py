@@ -61,46 +61,57 @@ class DataLoaderManager:
         else:
             self.logger.debug("Test DataLoader creato con successo.")
 
-    def get_transforms(self) -> transforms.Compose:
-        """Restituisce la pipeline di trasformazioni standard."""
-        self.logger.debug("Uso trasformazioni standard")
-        return transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
+    def _get_transforms(self, mean: list = None, std: list = None) -> transforms.Compose:
+        """Restituisce la pipeline di trasformazioni con normalizzazione personalizzata."""
+        if mean is None or std is None:
+            mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]  # default ImageNet
+        self.logger.debug(f"Uso trasformazioni con mean={mean} std={std}")
+        return transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)
+        ])
 
     def _prepare_datasets(self) -> Tuple[Dataset, Dataset, Dataset]:
-        """
-        Gestisce l'augmentazione, carica l'intero dataset e lo divide
-        in train, validazione e test.
-        """
         dataset_folder = self.config.input.dataset_folder
 
         if not os.path.exists(dataset_folder):
             self.logger.error(f"La cartella dataset '{dataset_folder}' non esiste.")
             sys.exit(1)
 
-        # 1. Carica l'intero dataset e calcola le dimensioni degli split
-        transform = self.get_transforms()
-        dataset = datasets.ImageFolder(dataset_folder, transform=transform)
-        self.classes = dataset.classes
-        total_size = len(dataset)
+        # Dataset grezzo senza normalizzazione
+        raw_transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor()
+        ])
+        raw_dataset = datasets.ImageFolder(dataset_folder, transform=raw_transform)
+        self.classes = raw_dataset.classes
+        total_size = len(raw_dataset)
+
+        # Calcolo dimensioni split
         train_size = int(total_size * self.config.train_parameters.train_split)
         val_size = int(total_size * self.config.train_parameters.val_split)
         test_size = total_size - train_size - val_size
-        self.logger.debug(
-            f"Split dataset: train={train_size}, val={val_size}, test={test_size}"
+
+        # Split casuale
+        train_dataset, val_dataset, test_dataset = random_split(
+            raw_dataset, [train_size, val_size, test_size], generator=self.generator
         )
 
-        # 2. Splitta il dataset in modo casuale e ritorna le tre parti
-        return random_split(
-            dataset, [train_size, val_size, test_size], generator=self.generator
-        )
+        # Calcola mean/std solo sul training set
+        mean, std = self._compute_mean_std(train_dataset)
+
+        # Trasformazioni finali
+        transform = self._get_transforms(mean.tolist(), std.tolist())
+
+        # Applica le trasformazioni
+        train_dataset.dataset.transform = transform
+        val_dataset.dataset.transform = transform
+        test_dataset.dataset.transform = transform
+
+        return train_dataset, val_dataset, test_dataset
+
+
 
     def _create_train_sampler(self, train_dataset: Dataset) -> Sampler:
         """
@@ -124,3 +135,20 @@ class DataLoaderManager:
             "WeightedRandomSampler creato per bilanciare le classi nel training."
         )
         return WeightedRandomSampler(samples_weight, len(samples_weight))
+
+    def _compute_mean_std(self, subset: Dataset) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Calcola mean e std su un subset (es. solo il training set)."""
+        loader = DataLoader(subset, batch_size=32, shuffle=False, num_workers=4)
+        mean = 0.0
+        std = 0.0
+        nb_samples = 0
+        for data, _ in loader:
+            batch_samples = data.size(0)
+            data = data.view(batch_samples, data.size(1), -1)  # [B, C, H*W]
+            mean += data.mean(2).sum(0)
+            std += data.std(2).sum(0)
+            nb_samples += batch_samples
+        mean /= nb_samples
+        std /= nb_samples
+        self.logger.debug(f"Calcolata mean (train set): {mean}, std: {std}")
+        return mean, std
