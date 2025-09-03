@@ -10,38 +10,49 @@ class CustomCNN(nn.Module):
         # Feature extraction layers
         # -------------------------
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
         self.pool1 = nn.MaxPool2d(2, 2)
 
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
         self.pool2 = nn.MaxPool2d(2, 2)
 
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
         self.pool3 = nn.MaxPool2d(2, 2)
 
-        # -------------------------
-        # Adaptive pooling per dimension fissa
-        # -------------------------
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((8, 8))
+        self.conv4 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
+        self.bn4 = nn.BatchNorm2d(256)
+        self.pool4 = nn.MaxPool2d(2, 2)
+
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((4, 4))
 
         # -------------------------
-        # Fully connected layers
+        # Fully connected layers modificati
         # -------------------------
-        self.fc1 = nn.Linear(128 * 8 * 8, 512)
-        self.dropout = nn.Dropout(dropout)
-        self.fc2 = nn.Linear(512, num_classes)
+        self.fc1 = nn.Linear(256 * 4 * 4, 256)
+        self.bn_fc1 = nn.BatchNorm1d(256)
+        self.dropout1 = nn.Dropout(dropout)
+        self.fc2 = nn.Linear(256, 128)
+        self.bn_fc2 = nn.BatchNorm1d(128)
+        self.dropout2 = nn.Dropout(dropout / 2)
+        self.fc3 = nn.Linear(128, num_classes)
 
     def forward(self, x):
         # -------------------------
-        # Feature extraction
+        # Feature extraction con BatchNorm
         # -------------------------
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
         x = self.pool1(x)
 
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.bn2(self.conv2(x)))
         x = self.pool2(x)
 
-        x = F.relu(self.conv3(x))
+        x = F.relu(self.bn3(self.conv3(x)))
         x = self.pool3(x)
+
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = self.pool4(x)
 
         # -------------------------
         # Adaptive pooling e flatten
@@ -52,13 +63,13 @@ class CustomCNN(nn.Module):
         # -------------------------
         # Fully connected layers
         # -------------------------
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.fc2(x)
+        x = F.relu(self.bn_fc1(self.fc1(x)))
+        x = self.dropout1(x)
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+        x = self.dropout2(x)
+        x = self.fc3(x)
         return x
 
 
-
-# Funzione getter esterna
 def get_custom_cnn(num_classes: int) -> nn.Module:
-        return CustomCNN(num_classes=num_classes)
+    return CustomCNN(num_classes=num_classes)
