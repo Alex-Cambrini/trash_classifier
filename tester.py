@@ -39,7 +39,7 @@ class Tester(EvaluationUtils):
 
         if reload_checkpoint:
             ckpt = read_checkpoint(self.model_load_path, self.logger)
-            if ckpt is None:                
+            if ckpt is None:
                 self.logger.error("Impossibile caricare modello per testing. Esco.")
                 return None
             self.model.load_state_dict(ckpt['model_state_dict']) 
@@ -50,11 +50,14 @@ class Tester(EvaluationUtils):
             verify_checkpoint_params(self.meta, config_params, self.logger)
         else:
             config_params = get_config_params(self.config)
-                
-        self.logger.info("Inizio valutazione completa")    
-        test_metrics = self.evaluation_utils.evaluate_full(self.data_manager.test_loader)
-        self.logger.info("Fine valutazione completa")    
-        # scrive su writer esistente (dal train o appena creato)
+
+        self.logger.info("Inizio valutazione completa")
+        self.model.eval()  # disabilita dropout e batchnorm per il test finale
+        with torch.inference_mode():  # disabilita il calcolo dei gradienti
+            test_metrics = self.evaluation_utils.evaluate_full(self.data_manager.test_loader)
+        self.logger.info("Fine valutazione completa")
+
+        # Scrive su writer esistente (dal train o appena creato)
         metrics_dict = {"test": test_metrics}
 
         # Log su terminale e TensorBoard
@@ -64,3 +67,4 @@ class Tester(EvaluationUtils):
 
         self.logger.info("Fine testing")
         return test_metrics
+
