@@ -73,13 +73,15 @@ class DataLoaderManager:
         ])
 
     def _prepare_datasets(self) -> Tuple[Dataset, Dataset, Dataset]:
+        """Prepara i dataset di training, validazione e test con normalizzazione personalizzata."""
         dataset_folder = self.config.input.dataset_folder
-
+        
+        # 1. Controlla che la cartella del dataset esista
         if not os.path.exists(dataset_folder):
             self.logger.error(f"La cartella dataset '{dataset_folder}' non esiste.")
             sys.exit(1)
 
-        # Dataset grezzo senza normalizzazione
+        # 2. Carica l'intero dataset senza normalizzazione
         raw_transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor()
@@ -88,30 +90,27 @@ class DataLoaderManager:
         self.classes = raw_dataset.classes
         total_size = len(raw_dataset)
 
-        # Calcolo dimensioni split
+        # 3. Calcola dimensioni split e divide casualmente il dataset
         train_size = int(total_size * self.config.train_parameters.train_split)
         val_size = int(total_size * self.config.train_parameters.val_split)
         test_size = total_size - train_size - val_size
-
-        # Split casuale
         train_dataset, val_dataset, test_dataset = random_split(
             raw_dataset, [train_size, val_size, test_size], generator=self.generator
         )
 
-        # Calcola mean/std solo sul training set
+        # 4. Calcola media e deviazione standard solo sul training set
         mean, std = self._compute_mean_std(train_dataset)
 
-        # Trasformazioni finali
+        # 5. Crea trasformazioni con normalizzazione personalizzata
         transform = self._get_transforms(mean.tolist(), std.tolist())
 
-        # Applica le trasformazioni
+        # 6. Applica le trasformazioni a tutti gli split
         train_dataset.dataset.transform = transform
         val_dataset.dataset.transform = transform
         test_dataset.dataset.transform = transform
 
+        # 7. Restituisce i tre dataset pronti
         return train_dataset, val_dataset, test_dataset
-
-
 
     def _create_train_sampler(self, train_dataset: Dataset) -> Sampler:
         """
