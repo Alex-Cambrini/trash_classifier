@@ -1,4 +1,5 @@
 import os
+import random
 import shutil
 import sys
 from collections import Counter
@@ -30,6 +31,7 @@ class AugmentationRunner:
         show_chart = self.config.show_chart
         valid_extensions = self.config.valid_extensions
         overwrite = self.config.overwrite
+        remove_excess = self.config
 
         min_aug = self.config.min_augmented_per_image
         max_aug = self.config.max_augmented_per_image
@@ -56,6 +58,8 @@ class AugmentationRunner:
         self._create_augmented_dataset(
             input_dir, output_dir, min_aug, max_aug, copy_original, valid_extensions
         )
+        if remove_excess:
+            self._remove_excess_images(output_dir, valid_extensions)
 
         self._analyze_dataset(
             output_dir,
@@ -212,3 +216,36 @@ class AugmentationRunner:
         if show_chart:
             plt.show()
         plt.close()
+
+
+    def _remove_excess_images(self, dataset_dir: str, valid_extensions: list) -> None:
+        """
+        Rimuove immagini in eccesso dalle classi più rappresentate per bilanciare il dataset.
+        Mantiene tutte le immagini della classe meno rappresentata.
+        """
+        # Scan immagini e conta per classe
+        images, class_names = self._scan_images(dataset_dir, valid_extensions)
+        class_counts = dict.fromkeys(class_names, 0)
+        class_images = {cls: [] for cls in class_names}
+
+        for cls, img_name in images:
+            class_counts[cls] += 1
+            class_images[cls].append(img_name)
+
+        # Trova numero di immagini della classe meno rappresentata
+        min_count = min(class_counts.values())
+
+        # Rimuovi eccesso da ogni classe
+        total_removed = 0
+        for cls in class_names:
+            excess = class_counts[cls] - min_count
+            if excess > 0:
+                imgs_to_remove = random.sample(class_images[cls], excess)
+                for img_name in imgs_to_remove:
+                    img_path = os.path.join(dataset_dir, cls, img_name)
+                    try:
+                        os.remove(img_path)
+                        total_removed += 1
+                    except Exception as e:
+                        self.logger.warning(f"Non posso rimuovere {img_path}: {e}")
+        self.logger.info(f"Rimosse {total_removed} immagini per bilanciare il dataset.")
