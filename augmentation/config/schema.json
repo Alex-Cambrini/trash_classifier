@@ -6,6 +6,7 @@
     "analisys_dir": { "type": "string" },
     "min_augmented_per_image": { "type": "integer", "minimum": 1 },
     "max_augmented_per_image": { "type": "integer", "minimum": 1 },
+    "remove_excess": { "type": "boolean" },
     "copy_original": { "type": "boolean" },
     "valid_extensions": {
       "type": "array",
@@ -16,6 +17,6 @@
     "show_chart": { "type": "boolean" },
     "seed": { "type": "integer" }
   },
-  "required": ["input_dir", "output_dir","analisys_dir", "min_augmented_per_image", "max_augmented_per_image", "copy_original", "valid_extensions", "debug", "seed"],
+  "required": ["input_dir", "output_dir","analisys_dir", "min_augmented_per_image", "max_augmented_per_image", "remove_excess", "copy_original", "valid_extensions", "debug", "seed"],
   "additionalProperties": false
 }

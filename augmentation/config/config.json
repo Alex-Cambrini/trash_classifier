@@ -4,6 +4,7 @@
   "analisys_dir": "./data/analisys",
   "min_augmented_per_image": 3,
   "max_augmented_per_image": 10,
+  "remove_excess": true,
   "copy_original": true,
   "valid_extensions": [".jpg", ".jpeg", ".png"],
   "debug": true,
