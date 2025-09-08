@@ -92,25 +92,24 @@ Questi controlli permettono di monitorare accuratamente l'apprendimento senza ra
 
 
 **Parametri costanti per tutti i run:**  
-- Batch size: 16  
 - Momentum: 0,9  
 - Augmentation Copy Original: True  
 
-| Run ID | Learning Rate | Scheduler Patience | LR Scheduler Gamma | Weight Decay | Aug Min Copy | Aug Max Copy | Epoche | Epoche Effettive /Note |
-|--------|---------------|------------------|------------------|--------------|--------------|--------------|--------|------------------------|
-| 20250829_183356_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 6  | 20 | 11 – Target accuracy raggiunta |
-| 20250830_012035_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 7  | 20 | 9 – Target accuracy raggiunta |
-| 20250830_110540_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 20 | 7 – Target accuracy raggiunta |
-| 20250831_003029_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 9  | 9 – Raggiunto numero epoche |
-| 20250831_092738_resnet18        | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 20 | Early stopping attivato 3/3 |
-| 20250831_142932_resnet18        | 0,0004 | 2 | 0,4 | 0,01  | 3 | 8  | 20 | 10 – Interrotta manualmente |
-| 20250831_205040_efficientnet_b0 | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 14 – Early stopping attivato 2/2 |
-| 20250901_022948_resnet18        | 0,0002 | 1 | 0,3 | 0,02  | 3 | 10 | 15 | 14 – Early stopping attivato |
-| 20250903_122035_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 9 – Interrotta Manualmente |
-| 20250903_141723_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 13 – Early stopping attivato |
-| 20250903_180658_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 20 |
-| 20250903_221446_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 19 – Early stopping attivato |
-| 20250904_110115_custom_cnn      | 0,001  | 2 | 0,7 | 0,001 | 3 | 10 | 30 | 13 – Early stopping attivato |
+| Run ID | Learning Rate | Scheduler Patience | LR Scheduler Gamma | Weight Decay | Aug Min Copy | Aug Max Copy | Epoche | Epoche Effettive /Note | Batch Size
+|--------|---------------|------------------|------------------|--------------|--------------|--------------|--------|------------------------|-|
+| 20250829_183356_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 6  | 20 | 11 – Target accuracy raggiunta | 16
+| 20250830_012035_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 7  | 20 | 9 – Target accuracy raggiunta | 16
+| 20250830_110540_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 20 | 7 – Target accuracy raggiunta | 16
+| 20250831_003029_efficientnet_b0 | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 9  | 9 – Raggiunto numero epoche | 16
+| 20250831_092738_resnet18        | 0,0005 | 2 | 0,5 | 0,005 | 3 | 8  | 20 | Early stopping attivato 3/3 | 16
+| 20250831_142932_resnet18        | 0,0004 | 2 | 0,4 | 0,01  | 3 | 8  | 20 | 10 – Interrotta manualmente | 16 
+| 20250831_205040_efficientnet_b0 | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 14 – Early stopping attivato 2/2 | 16
+| 20250901_022948_resnet18        | 0,0002 | 1 | 0,3 | 0,02  | 3 | 10 | 15 | 14 – Early stopping attivato | 16
+| 20250903_122035_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 9 – Interrotta Manualmente | 16
+| 20250903_141723_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 13 – Early stopping attivato | 16
+| 20250903_180658_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 20 | 16 
+| 20250903_221446_custom_cnn      | 0,0005 | 2 | 0,4 | 0,005 | 3 | 10 | 20 | 19 – Early stopping attivato | 16
+| 20250904_110115_custom_cnn      | 0,001  | 2 | 0,7 | 0,001 | 3 | 10 | 30 | 13 – Early stopping attivato | 16
 
 #### Punti chiave dei run
 > - L'augmentation mirata migliora significativamente la classe "Rifiuti generici" e riduce il gap Train/Val.
@@ -181,8 +180,7 @@ Questi controlli permettono di monitorare accuratamente l'apprendimento senza ra
 #### 9. Custom CNN – Run 20250903_122035 (v1)
 
 - **Performance**: dati mancanti (n/a).
-- **Classi**: impossibile valutare, run interrotta manualmente.
-- **Interpretazione**: loss iniziale molto alta, modello non convergeva.
+- **Interpretazione**: dopo 9 epoche loss di training e validazione ancora elevate segno di underfitting, modello non convergeva.
 - **Ragionamento**: modifica della rete necessaria prima di proseguire (passaggio a v2).
 
 #### 10. Custom CNN – Run 20250903_141723 (v2)
